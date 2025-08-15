@@ -1,6 +1,9 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import useMouseMovement from "../hooks/useMouseMovement";
 import styled, { keyframes, css } from "styled-components";
 import Image from "next/image";
+import ParallaxStage from "@/components/ParallaxStage";
+import { useWindowSize } from "@/hooks/useWindowSize";
 
 /* 🧠 Utility: Generate Today’s Cone Code */
 function getCode() {
@@ -158,6 +161,19 @@ const Hint = styled.div`
   }
 `;
 
+const GlassPanel = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(1px);
+  z-index: 0;
+  pointer-events: none;
+`;
+
 /* 🚧 THE MAIN PAGE */
 export default function Home() {
   const [code, setCode] = useState("");
@@ -166,6 +182,8 @@ export default function Home() {
   const [slap, setSlap] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const correctCode = getCode();
+  const mouse = useMouseMovement();
+  const windowSize = useWindowSize();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,42 +203,54 @@ export default function Home() {
     }
   };
 
+  const cardTransform =
+    typeof window !== "undefined"
+      ? {
+          transform: `perspective(1000px) rotateX(${
+            (mouse.y - windowSize.height / 2) / 60
+          }deg) rotateY(${(mouse.x - windowSize.width / 2) / -60}deg)`,
+        }
+      : {};
+
   return (
     <Page>
-      <Card>
-        <Title>🚧 Under Construction AI</Title>
-        <p>Enter the daily code or be corrected by a sacred cone.</p>
+      <ParallaxStage>
+        <Card style={cardTransform}>
+          <GlassPanel />
+          <Title>🚧 Under Construction AI</Title>
+          <p>Enter the daily code or be corrected by a sacred cone.</p>
 
-        <StyledForm onSubmit={handleSubmit}>
-          <Input
-            ref={inputRef}
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="CONE-YYYYMMDD-ABC123"
-            $shake={shake}
-          />
-          <Button type="submit">Submit</Button>
-        </StyledForm>
-
-        <Message>{message}</Message>
-
-        <Hint>
-          For demo/testing: today’s code is <code>{correctCode}</code>
-        </Hint>
-
-        {slap && (
-          <Cone>
-            <Image
-              src="/cone.png"
-              width={80}
-              height={80}
-              alt="Cone Slap"
-              priority
+          <StyledForm onSubmit={handleSubmit}>
+            <Input
+              ref={inputRef}
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="CONE-YYYYMMDD-ABC123"
+              $shake={shake}
             />
-          </Cone>
-        )}
-      </Card>
+            <Button type="submit">Submit</Button>
+          </StyledForm>
+
+          <Message>{message}</Message>
+
+          <Hint>
+            For demo/testing: today’s code is <code>{correctCode}</code>
+          </Hint>
+
+          {slap && (
+            <Cone>
+              <Image
+                src="/cone.png"
+                width={80}
+                height={80}
+                alt="Cone Slap"
+                priority
+              />
+            </Cone>
+          )}
+        </Card>
+      </ParallaxStage>
     </Page>
   );
 }
