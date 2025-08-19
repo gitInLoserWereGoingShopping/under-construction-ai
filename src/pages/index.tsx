@@ -1,6 +1,10 @@
 import { useState, useRef } from "react";
 import styled, { keyframes, css } from "styled-components";
 import Image from "next/image";
+import { JobBoard } from "../components/JobBoard";
+
+// Import your new feature component here
+// import { NewFeatureComponent } from "../components/NewFeatureComponent";
 
 /* 🧠 Utility: Generate Today’s Cone Code */
 function getCode() {
@@ -50,6 +54,17 @@ const slap = keyframes`
   40%  { transform: translate(-10vw, -10vh) rotate(60deg); opacity: 1; }
   60%  { transform: translate(0, 0) rotate(90deg); opacity: 1; }
   100% { transform: translate(80vw, -20vh) rotate(180deg); opacity: 0; }
+`;
+
+const fadeInUp = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 `;
 
 /* 🧱 Styled Components */
@@ -158,12 +173,71 @@ const Hint = styled.div`
   }
 `;
 
+const NewFeatureContainer = styled.div`
+  width: min(800px, 90vw);
+  padding: 2rem;
+  background: #1a1b20;
+  border: 2px solid #ff7a18;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  animation: ${fadeInUp} 0.6s ease-out;
+`;
+
+const BackButton = styled.button`
+  margin-top: 2rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: #ff7a18;
+  border: 2px solid #ff7a18;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 122, 24, 0.2),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
+
+  &:hover {
+    background: #ff7a18;
+    color: #0b0c0f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 122, 24, 0.3);
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active {
+    transform: translateY(0);
+    transition: transform 0.1s ease;
+  }
+`;
+
 /* 🚧 THE MAIN PAGE */
 export default function Home() {
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
   const [shake, setShake] = useState(false);
   const [slap, setSlap] = useState(false);
+  const [accessGranted, setAccessGranted] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const correctCode = getCode();
 
@@ -172,6 +246,10 @@ export default function Home() {
 
     if (code.trim() === correctCode) {
       setMessage("✅ Access granted. Construction beam inbound.");
+      // Transition to the new feature after a short delay
+      setTimeout(() => {
+        setAccessGranted(true);
+      }, 1500);
     } else {
       const sass = wisdom[Math.floor(Math.random() * wisdom.length)];
       setMessage(sass);
@@ -185,42 +263,70 @@ export default function Home() {
     }
   };
 
+  const handleBack = () => {
+    // Reset all state with flair
+    setAccessGranted(false);
+    setCode("");
+    setMessage("🔄 Returning to construction zone...");
+    setShake(false);
+    setSlap(false);
+
+    // Clear the message after a brief moment and focus input
+    setTimeout(() => {
+      setMessage("");
+      inputRef.current?.focus();
+    }, 800);
+  };
+
   return (
     <Page>
-      <Card>
-        <Title>🚧 Under Construction AI</Title>
-        <p>Enter the daily code or be corrected by a sacred cone.</p>
+      {accessGranted ? (
+        // Your new feature component will render here
+        <NewFeatureContainer>
+          {/* Your new React TypeScript component */}
+          <JobBoard />
 
-        <StyledForm onSubmit={handleSubmit}>
-          <Input
-            ref={inputRef}
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="CONE-YYYYMMDD-ABC123"
-            $shake={shake}
-          />
-          <Button type="submit">Submit</Button>
-        </StyledForm>
+          {/* Enhanced back button that resets all state */}
+          <BackButton onClick={handleBack}>
+            ← Back to Construction Page
+          </BackButton>
+        </NewFeatureContainer>
+      ) : (
+        <Card>
+          <Title>🚧 Under Construction AI</Title>
+          <p>Enter the daily code or be corrected by a sacred cone.</p>
 
-        <Message>{message}</Message>
-
-        <Hint>
-          For demo/testing: today’s code is <code>{correctCode}</code>
-        </Hint>
-
-        {slap && (
-          <Cone>
-            <Image
-              src="/cone.png"
-              width={80}
-              height={80}
-              alt="Cone Slap"
-              priority
+          <StyledForm onSubmit={handleSubmit}>
+            <Input
+              ref={inputRef}
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="CONE-YYYYMMDD-ABC123"
+              $shake={shake}
             />
-          </Cone>
-        )}
-      </Card>
+            <Button type="submit">Submit</Button>
+          </StyledForm>
+
+          <Message>{message}</Message>
+
+          <Hint>
+            For demo/testing: today's code is <code>{correctCode}</code>
+          </Hint>
+
+          {slap && (
+            <Cone>
+              <Image
+                src="/cone.png"
+                width={80}
+                height={80}
+                alt="Cone Slap"
+                priority
+              />
+            </Cone>
+          )}
+        </Card>
+      )}
     </Page>
   );
 }
