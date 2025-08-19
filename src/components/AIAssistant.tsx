@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import styled, { keyframes, css } from "styled-components";
+import ImpossibleQuestionEngine from "./ImpossibleQuestionEngine";
+import FeatureAnnouncementModal from "./FeatureAnnouncementModal";
+import useFeatureAnnouncement from "../hooks/useFeatureAnnouncement";
 
 // Types for our weird AI experiments
 interface AIExperiment {
@@ -10,6 +13,7 @@ interface AIExperiment {
   category: "text" | "visual" | "audio" | "data" | "chaos";
   weirdness: number; // 1-10 scale of how weird this gets
   status: "stable" | "experimental" | "chaotic" | "forbidden" | "legendary";
+  component?: React.FC; // Optional dedicated component
 }
 
 interface AIAssistantProps {
@@ -41,11 +45,13 @@ const experiments: AIExperiment[] = [
   {
     id: "reverse-search",
     name: "Impossible Question Engine",
-    description: "Give it answers, it generates the most creative questions.",
+    description:
+      "🌟 ACTIVE: Conversational AI personalities that transform your answers into mind-bending questions. Choose your companion!",
     icon: "❓",
     category: "text",
     weirdness: 8,
     status: "chaotic",
+    component: ImpossibleQuestionEngine,
   },
   {
     id: "data-poetry",
@@ -104,6 +110,16 @@ const experiments: AIExperiment[] = [
     category: "chaos",
     weirdness: 11,
     status: "legendary",
+  },
+  {
+    id: "feature-announcements",
+    name: "🎊 Feature Announcement Theater",
+    description:
+      "🌟 NEW: Spectacular modal system for celebrating feature launches with confetti, animations, and professional showcase!",
+    icon: "🎭",
+    category: "chaos",
+    weirdness: 9,
+    status: "experimental",
   },
 ];
 
@@ -434,6 +450,14 @@ const AIAssistant: React.FC<AIAssistantProps> = () => {
   const [output, setOutput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Feature announcement system
+  const {
+    currentAnnouncement,
+    isVisible,
+    showTemplateAnnouncement,
+    hideAnnouncement,
+  } = useFeatureAnnouncement();
+
   const handleExperimentSelect = (experiment: AIExperiment) => {
     if (experiment.status === "forbidden") {
       // Add some theatrical warning
@@ -532,6 +556,19 @@ Message from the Code Universe:
 🌟 Next Adventure: AWAITING...`;
           break;
 
+        case "feature-announcements":
+          // Show different announcement based on input
+          if (
+            input.toLowerCase().includes("impossible") ||
+            input.toLowerCase().includes("question")
+          ) {
+            showTemplateAnnouncement("impossibleQuestionEngine");
+          } else {
+            showTemplateAnnouncement("featureAnnouncementModal");
+          }
+          result = `🎭 Feature Announcement Theater Activated!\n\n✨ Modal Celebration System Triggered!\n\nInput: "${input}"\n\n🎊 Based on your input, I've launched the appropriate celebration modal!\n\nFeatures:\n• Dynamic modal with confetti effects\n• Multiple celebration levels\n• Professional feature showcase\n• Animated backgrounds and effects\n• Structured accomplishment presentation\n\n🚀 The modal should be visible now - check it out!`;
+          break;
+
         default:
           result = `🧪 Experiment "${selectedExperiment.name}" activated!\n\nInput: "${input}"\n\nProcessing through ${selectedExperiment.weirdness}/10 weirdness filters...\n\n✨ Result: This is where the magic would happen!\n\n(This is a demo - imagine the wildest AI processing here)`;
       }
@@ -610,29 +647,54 @@ Message from the Code Universe:
             {selectedExperiment.description}
           </p>
 
-          <ExperimentInterface>
-            <InputArea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={`Enter your ${selectedExperiment.category} input for the AI to process...`}
-            />
-
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <ActionButton onClick={processExperiment} disabled={isProcessing}>
-                {isProcessing ? "🧪 Processing..." : "✨ Run Experiment"}
-              </ActionButton>
-              <ActionButton
-                $variant="danger"
-                onClick={() => setSelectedExperiment(null)}
-              >
-                ← Back to Lab
-              </ActionButton>
+          {/* Check if experiment has a dedicated component */}
+          {selectedExperiment.component ? (
+            <div style={{ marginTop: "2rem" }}>
+              <selectedExperiment.component />
+              <div style={{ textAlign: "center", marginTop: "2rem" }}>
+                <ActionButton
+                  $variant="danger"
+                  onClick={() => setSelectedExperiment(null)}
+                >
+                  ← Back to Lab
+                </ActionButton>
+              </div>
             </div>
+          ) : (
+            <ExperimentInterface>
+              <InputArea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={`Enter your ${selectedExperiment.category} input for the AI to process...`}
+              />
 
-            {output && <OutputArea>{output}</OutputArea>}
-          </ExperimentInterface>
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <ActionButton
+                  onClick={processExperiment}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? "🧪 Processing..." : "✨ Run Experiment"}
+                </ActionButton>
+                <ActionButton
+                  $variant="danger"
+                  onClick={() => setSelectedExperiment(null)}
+                >
+                  ← Back to Lab
+                </ActionButton>
+              </div>
+
+              {output && <OutputArea>{output}</OutputArea>}
+            </ExperimentInterface>
+          )}
         </ActiveExperiment>
       )}
+
+      {/* Feature Announcement Modal */}
+      <FeatureAnnouncementModal
+        announcement={currentAnnouncement}
+        isVisible={isVisible}
+        onClose={hideAnnouncement}
+      />
     </LabContainer>
   );
 };
