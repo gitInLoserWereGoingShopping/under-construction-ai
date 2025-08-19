@@ -3,6 +3,7 @@ import styled, { keyframes, css } from "styled-components";
 import ImpossibleQuestionEngine from "./ImpossibleQuestionEngine";
 import EmotionalColorTranslator from "./EmotionalColorTranslator";
 import FeatureAnnouncementModal from "./FeatureAnnouncementModal";
+import AIGameWorkshop from "./AIGameWorkshop";
 import useFeatureAnnouncement from "../hooks/useFeatureAnnouncement";
 
 // Types for our weird AI experiments
@@ -11,7 +12,7 @@ interface AIExperiment {
   name: string;
   description: string;
   icon: string;
-  category: "text" | "visual" | "audio" | "data" | "chaos";
+  category: "text" | "visual" | "audio" | "data" | "chaos" | "games";
   weirdness: number; // 1-10 scale of how weird this gets
   status: "stable" | "experimental" | "chaotic" | "forbidden" | "legendary";
   component?: React.FC; // Optional dedicated component
@@ -23,6 +24,17 @@ interface AIAssistantProps {
 
 // The Collection of Weird AI Experiments
 const experiments: AIExperiment[] = [
+  {
+    id: "ai-games",
+    name: "AI Game Workshop",
+    description:
+      "🎮 ACTIVE: Modular game engine for creating AI-powered games. Canvas-based with gamepad, touch, and keyboard support.",
+    icon: "🎮",
+    category: "games",
+    weirdness: 6,
+    status: "experimental",
+    component: AIGameWorkshop,
+  },
   {
     id: "dream-code",
     name: "Dream Code Generator",
