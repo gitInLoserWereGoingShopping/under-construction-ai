@@ -215,7 +215,6 @@ export default function Home() {
     setMessage("🔄 Returning to construction zone...");
     setShake(false);
     setSlap(false);
-    
     // Clear the message after a brief moment and focus input
     setTimeout(() => {
       setMessage("");
@@ -251,7 +250,7 @@ export default function Home() {
           <Message>{message}</Message>
 
           <Hint>
-            For demo/testing: today's code is <code>{correctCode}</code>
+            For demo/testing: todayz code is <code>{correctCode}</code>
           </Hint>
 
           {slap && (

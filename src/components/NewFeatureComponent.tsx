@@ -8,8 +8,8 @@ interface Feature {
   description: string;
   branch: string;
   icon: string;
-  status: 'active' | 'development' | 'concept';
-  component?: React.ComponentType<any>;
+  status: "active" | "development" | "concept";
+  component?: React.ComponentType<React.FC>;
 }
 
 interface NewFeatureProps {
@@ -19,37 +19,37 @@ interface NewFeatureProps {
 // Sample features data (this could eventually come from a config or API)
 const featuresData: Feature[] = [
   {
-    id: 'reservoir-dreamscape',
-    title: 'Reservoir Dreamscape',
-    description: 'Current feature in development - your active branch!',
-    branch: 'reservoir-dreamscape',
-    icon: '🌊',
-    status: 'active'
+    id: "reservoir-dreamscape",
+    title: "Reservoir Dreamscape",
+    description: "Current feature in development - your active branch!",
+    branch: "reservoir-dreamscape",
+    icon: "🌊",
+    status: "active",
   },
   {
-    id: 'job-board',
-    title: 'Job Board',
-    description: 'A revolutionary job posting and application system.',
-    branch: 'job-board',
-    icon: '💼',
-    status: 'development'
+    id: "job-board",
+    title: "Job Board",
+    description: "A revolutionary job posting and application system.",
+    branch: "job-board",
+    icon: "💼",
+    status: "development",
   },
   {
-    id: 'ai-assistant',
-    title: 'AI Assistant',
-    description: 'Smart AI helper for various tasks and workflows.',
-    branch: 'ai-assistant',
-    icon: '🤖',
-    status: 'concept'
+    id: "ai-assistant",
+    title: "AI Assistant",
+    description: "Smart AI helper for various tasks and workflows.",
+    branch: "ai-assistant",
+    icon: "🤖",
+    status: "concept",
   },
   {
-    id: 'data-viz',
-    title: 'Data Visualization',
-    description: 'Interactive charts and analytics dashboard.',
-    branch: 'data-viz',
-    icon: '📊',
-    status: 'concept'
-  }
+    id: "data-viz",
+    title: "Data Visualization",
+    description: "Interactive charts and analytics dashboard.",
+    branch: "data-viz",
+    icon: "📊",
+    status: "concept",
+  },
 ];
 
 // Styled Components
@@ -90,9 +90,13 @@ const FeaturesGrid = styled.div`
 
 const FeatureTile = styled.div<{ $status: string }>`
   background: #1a1b20;
-  border: 2px solid ${props => 
-    props.$status === 'active' ? '#ff7a18' : 
-    props.$status === 'development' ? '#4CAF50' : '#666'};
+  border: 2px solid
+    ${(props) =>
+      props.$status === "active"
+        ? "#ff7a18"
+        : props.$status === "development"
+        ? "#4CAF50"
+        : "#666"};
   border-radius: 12px;
   padding: 2rem;
   cursor: pointer;
@@ -103,19 +107,27 @@ const FeatureTile = styled.div<{ $status: string }>`
   &:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    border-color: ${props => 
-      props.$status === 'active' ? '#ff8e2b' : 
-      props.$status === 'development' ? '#66BB6A' : '#888'};
+    border-color: ${(props) =>
+      props.$status === "active"
+        ? "#ff8e2b"
+        : props.$status === "development"
+        ? "#66BB6A"
+        : "#888"};
   }
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 122, 24, 0.1), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 122, 24, 0.1),
+      transparent
+    );
     transition: left 0.5s ease;
   }
 
@@ -159,10 +171,13 @@ const BranchTag = styled.span`
 `;
 
 const StatusBadge = styled.span<{ $status: string }>`
-  background: ${props => 
-    props.$status === 'active' ? '#ff7a18' : 
-    props.$status === 'development' ? '#4CAF50' : '#666'};
-  color: ${props => props.$status === 'concept' ? '#fff' : '#000'};
+  background: ${(props) =>
+    props.$status === "active"
+      ? "#ff7a18"
+      : props.$status === "development"
+      ? "#4CAF50"
+      : "#666"};
+  color: ${(props) => (props.$status === "concept" ? "#fff" : "#000")};
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
   font-size: 0.8rem;
@@ -176,13 +191,16 @@ const ActionsSection = styled.div`
   border-top: 1px solid #333;
 `;
 
-const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
+const ActionButton = styled.button<{ $variant?: "primary" | "secondary" }>`
   padding: 0.75rem 2rem;
   margin: 0 0.5rem;
-  background: ${props => props.$variant === 'primary' ? 
-    'linear-gradient(135deg, #ff7a18, #ff8e2b)' : 'transparent'};
-  color: ${props => props.$variant === 'primary' ? '#000' : '#ff7a18'};
-  border: ${props => props.$variant === 'primary' ? 'none' : '2px solid #ff7a18'};
+  background: ${(props) =>
+    props.$variant === "primary"
+      ? "linear-gradient(135deg, #ff7a18, #ff8e2b)"
+      : "transparent"};
+  color: ${(props) => (props.$variant === "primary" ? "#000" : "#ff7a18")};
+  border: ${(props) =>
+    props.$variant === "primary" ? "none" : "2px solid #ff7a18"};
   border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
@@ -191,9 +209,11 @@ const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(255, 122, 24, 0.3);
-    background: ${props => props.$variant === 'primary' ? 
-      'linear-gradient(135deg, #ff8e2b, #ffa040)' : '#ff7a18'};
-    color: ${props => props.$variant === 'primary' ? '#000' : '#000'};
+    background: ${(props) =>
+      props.$variant === "primary"
+        ? "linear-gradient(135deg, #ff8e2b, #ffa040)"
+        : "#ff7a18"};
+    color: ${(props) => (props.$variant === "primary" ? "#000" : "#000")};
   }
 `;
 
@@ -209,7 +229,7 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
 
   const handleCreateNewFeature = () => {
     // This could open a modal or navigate to a feature creation flow
-    console.log('Creating new feature...');
+    console.log("Creating new feature...");
   };
 
   if (selectedFeature) {
@@ -217,10 +237,14 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
     return (
       <DashboardWrapper>
         <DashboardHeader>
-          <DashboardTitle>{selectedFeature.icon} {selectedFeature.title}</DashboardTitle>
-          <DashboardSubtitle>Feature implementation goes here</DashboardSubtitle>
+          <DashboardTitle>
+            {selectedFeature.icon} {selectedFeature.title}
+          </DashboardTitle>
+          <DashboardSubtitle>
+            Feature implementation goes here
+          </DashboardSubtitle>
         </DashboardHeader>
-        
+
         <ActionsSection>
           <ActionButton onClick={() => setSelectedFeature(null)}>
             ← Back to Dashboard
@@ -240,25 +264,27 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
       <DashboardHeader>
         <DashboardTitle>🚀 Feature Dashboard</DashboardTitle>
         <DashboardSubtitle>
-          Manage and explore your AI features. Each tile represents a different branch/feature 
-          you can work on. Click to dive into a specific feature!
+          Manage and explore your AI features. Each tile represents a different
+          branch/feature you can work on. Click to dive into a specific feature!
         </DashboardSubtitle>
       </DashboardHeader>
 
       <FeaturesGrid>
         {featuresData.map((feature) => (
-          <FeatureTile 
-            key={feature.id} 
+          <FeatureTile
+            key={feature.id}
             $status={feature.status}
             onClick={() => handleFeatureClick(feature)}
           >
             <FeatureIcon>{feature.icon}</FeatureIcon>
             <FeatureTitle>{feature.title}</FeatureTitle>
             <FeatureDescription>{feature.description}</FeatureDescription>
-            
+
             <FeatureMeta>
               <BranchTag>git:{feature.branch}</BranchTag>
-              <StatusBadge $status={feature.status}>{feature.status}</StatusBadge>
+              <StatusBadge $status={feature.status}>
+                {feature.status}
+              </StatusBadge>
             </FeatureMeta>
           </FeatureTile>
         ))}
