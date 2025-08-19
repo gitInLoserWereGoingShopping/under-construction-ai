@@ -10,7 +10,7 @@ interface Feature {
   branch: string;
   icon: string;
   status: "active" | "development" | "concept";
-  component?: React.ComponentType<any>;
+  component?: React.FC;
 }
 
 interface NewFeatureProps {

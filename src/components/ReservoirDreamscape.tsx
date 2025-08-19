@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 
 /**
  * ReservoirDreamscape
@@ -95,7 +95,7 @@ function formatVolume(x: number, fluid: "oil" | "gas" = "oil") {
 const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
   qi = 1200, // STB/D
   Di = 0.75, // 75%/yr
-  b = 0.7,   // hyperbolic tail
+  b = 0.7, // hyperbolic tail
   qEcon = 40,
   unit = "STB/D",
   dtMonths = 1,
@@ -112,7 +112,10 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
   const bEff = maxMode ? clamp(lerp(bLive, 0.99, 0.6), 0, 0.999) : bLive;
   const DiEff = maxMode ? clamp(lerp(DiLive, 0.35, 0.6), 0.05, 2.0) : DiLive;
   const qiEff = qiLive;
-  const qEconEff = Math.max(1, maxMode ? Math.max(5, qEconLive * 0.6) : qEconLive);
+  const qEconEff = Math.max(
+    1,
+    maxMode ? Math.max(5, qEconLive * 0.6) : qEconLive
+  );
 
   const fluid: "oil" | "gas" = unit === "Mscf/D" ? "gas" : "oil";
 
@@ -142,7 +145,7 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
       cumAt5y: Np5,
       qAt5y: q5,
     };
-  }, [qiEff, DiEff, bEff, qEconEff, dtMonths, maxYears, fluid]);
+  }, [qiEff, DiEff, bEff, qEconEff, dtMonths, maxYears]);
 
   // Axes ranges
   const maxQ = Math.max(qiEff, ...points.map((p) => p.q));
@@ -151,40 +154,64 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
   const padNp = maxNp * 0.1;
 
   // SVG helpers
-  const W = 980, H = 420;
+  const W = 980,
+    H = 420;
   const plot = { left: 70, right: 70, top: 30, bottom: 60 };
   const innerW = W - plot.left - plot.right;
   const innerH = H - plot.top - plot.bottom;
 
-  const x = (tYears: number) =>
-    plot.left + (tYears / Math.max(points.at(-1)?.tYears ?? 1, 1e-6)) * innerW;
+  const x = useCallback(
+    (tYears: number) =>
+      plot.left +
+      (tYears / Math.max(points.at(-1)?.tYears ?? 1, 1e-6)) * innerW,
+    [points, innerW, plot.left]
+  );
 
-  const yRate = (q: number) =>
-    plot.top + innerH - ((q - 0) / (maxQ + padQ)) * innerH;
+  const yRate = useCallback(
+    (q: number) => plot.top + innerH - ((q - 0) / (maxQ + padQ)) * innerH,
+    [maxQ, padQ, innerH, plot.top]
+  );
 
-  const yCum = (Np: number) =>
-    plot.top + innerH - ((Np - 0) / (maxNp + padNp)) * innerH;
+  const yCum = useCallback(
+    (Np: number) => plot.top + innerH - ((Np - 0) / (maxNp + padNp)) * innerH,
+    [maxNp, padNp, innerH, plot.top]
+  );
 
   const ratePath = useMemo(() => {
     if (!points.length) return "";
-    return points.map((p, i) => `${i ? "L" : "M"} ${x(p.tYears).toFixed(2)} ${yRate(p.q).toFixed(2)}`).join(" ");
-  }, [points]);
+    return points
+      .map(
+        (p, i) =>
+          `${i ? "L" : "M"} ${x(p.tYears).toFixed(2)} ${yRate(p.q).toFixed(2)}`
+      )
+      .join(" ");
+  }, [points, x, yRate]);
 
   const cumPath = useMemo(() => {
     if (!points.length) return "";
-    return points.map((p, i) => `${i ? "L" : "M"} ${x(p.tYears).toFixed(2)} ${yCum(p.Np).toFixed(2)}`).join(" ");
-  }, [points]);
+    return points
+      .map(
+        (p, i) =>
+          `${i ? "L" : "M"} ${x(p.tYears).toFixed(2)} ${yCum(p.Np).toFixed(2)}`
+      )
+      .join(" ");
+  }, [points, x, yCum]);
 
   const remainingAreaPath = useMemo(() => {
     // Fill between Np(t) and EUR for a "remaining reserves" vibe
     if (!points.length) return "";
     const topPath = points
-      .map((p, i) => `${i ? "L" : "M"} ${x(p.tYears).toFixed(2)} ${yCum(p.Np).toFixed(2)}`)
+      .map(
+        (p, i) =>
+          `${i ? "L" : "M"} ${x(p.tYears).toFixed(2)} ${yCum(p.Np).toFixed(2)}`
+      )
       .join(" ");
     const last = points.at(-1)!;
-    const baseTo = `L ${x(last.tYears).toFixed(2)} ${yCum(EUR).toFixed(2)} L ${x(points[0].tYears).toFixed(2)} ${yCum(EUR).toFixed(2)} Z`;
+    const baseTo = `L ${x(last.tYears).toFixed(2)} ${yCum(EUR).toFixed(
+      2
+    )} L ${x(points[0].tYears).toFixed(2)} ${yCum(EUR).toFixed(2)} Z`;
     return topPath + " " + baseTo;
-  }, [points, EUR]);
+  }, [points, EUR, x, yCum]);
 
   const bg = dark ? "#0b1020" : "#f7f9ff";
   const fg = dark ? "#e6efff" : "#1a2233";
@@ -193,23 +220,38 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
   const accentC = dark ? "#ff9f6a" : "#d45500";
 
   return (
-    <div style={{ fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system", color: fg }}>
+    <div
+      style={{
+        fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system",
+        color: fg,
+      }}
+    >
       <style>{`
         .rd-card {
           background: ${bg};
           border: 1px solid ${dark ? "#1b2340" : "#ccd6ff"};
           border-radius: 16px;
           overflow: hidden;
-          box-shadow: ${dark ? "0 10px 30px rgba(0,0,0,0.4)" : "0 10px 30px rgba(0,30,80,0.12)"};
+          box-shadow: ${
+            dark
+              ? "0 10px 30px rgba(0,0,0,0.4)"
+              : "0 10px 30px rgba(0,30,80,0.12)"
+          };
         }
         .rd-title {
           display:flex; align-items:center; justify-content:space-between;
-          padding: 14px 18px; border-bottom: 1px dashed ${dark ? "#253055" : "#dbe5ff"};
-          background: linear-gradient(90deg, ${dark ? "#0b1020" : "#eef3ff"} 0%, transparent 100%);
+          padding: 14px 18px; border-bottom: 1px dashed ${
+            dark ? "#253055" : "#dbe5ff"
+          };
+          background: linear-gradient(90deg, ${
+            dark ? "#0b1020" : "#eef3ff"
+          } 0%, transparent 100%);
         }
         .rd-chips { display:flex; gap:8px; flex-wrap:wrap; }
         .chip {
-          font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid ${dark ? "#253055" : "#cfe0ff"};
+          font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid ${
+            dark ? "#253055" : "#cfe0ff"
+          };
           background:${dark ? "rgba(255,255,255,0.04)" : "white"};
         }
         .rd-controls { display:grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap:12px; padding:14px 18px; }
@@ -222,11 +264,15 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
         }
         .toggle { display:flex; align-items:center; gap:8px; font-size:13px; }
         .legend { display:flex; gap:16px; align-items:center; padding: 6px 18px 16px; }
-        .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid ${dark ? "#243055" : "#cfe0ff"}; font-size:12px;}
+        .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid ${
+          dark ? "#243055" : "#cfe0ff"
+        }; font-size:12px;}
         .swatch { width:10px; height:10px; border-radius:2px; }
         .rd-footer { display:flex; gap:16px; padding:12px 18px 16px; flex-wrap:wrap; }
         .badge {
-          padding:10px 14px; border-radius:12px; border:1px solid ${dark ? "#243055" : "#cfe0ff"};
+          padding:10px 14px; border-radius:12px; border:1px solid ${
+            dark ? "#243055" : "#cfe0ff"
+          };
           background:${dark ? "rgba(255,255,255,0.03)" : "#ffffff"};
           display:flex; flex-direction:column; gap:4px; min-width:180px;
         }
@@ -238,10 +284,16 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
           pointer-events:none; opacity:${dark ? 0.35 : 0.5};
         }
         .schematic .well {
-          position:absolute; left:44px; top:10px; bottom:10px; width:4px; background: ${dark ? "#7aaaff" : "#004bcc"};
-          box-shadow: 0 0 10px ${dark ? "rgba(90,140,255,0.5)" : "rgba(0,60,200,0.25)"};
+          position:absolute; left:44px; top:10px; bottom:10px; width:4px; background: ${
+            dark ? "#7aaaff" : "#004bcc"
+          };
+          box-shadow: 0 0 10px ${
+            dark ? "rgba(90,140,255,0.5)" : "rgba(0,60,200,0.25)"
+          };
         }
-        .perf { position:absolute; left:38px; width:16px; height:2px; background:${dark ? "#ffb780" : "#d45500"}; }
+        .perf { position:absolute; left:38px; width:16px; height:2px; background:${
+          dark ? "#ffb780" : "#d45500"
+        }; }
       `}</style>
 
       <div className="rd-card">
@@ -256,10 +308,14 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
             </div>
           </div>
           <div className="rd-chips">
-            <div className="chip">Porosity ~ { (maxMode ? 0.14 : 0.10).toFixed(2) }</div>
-            <div className="chip">Permeability ~ { (maxMode ? 45 : 12) } mD</div>
-            <div className="chip">Net Pay ~ { (maxMode ? 62 : 40) } ft</div>
-            <div className="chip">GOR ~ { fluid === "gas" ? "—" : "900 scf/STB" }</div>
+            <div className="chip">
+              Porosity ~ {(maxMode ? 0.14 : 0.1).toFixed(2)}
+            </div>
+            <div className="chip">Permeability ~ {maxMode ? 45 : 12} mD</div>
+            <div className="chip">Net Pay ~ {maxMode ? 62 : 40} ft</div>
+            <div className="chip">
+              GOR ~ {fluid === "gas" ? "—" : "900 scf/STB"}
+            </div>
             <div className="chip">Depth ~ 9,850 ft TVD</div>
           </div>
         </div>
@@ -267,59 +323,127 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
         {/* Controls */}
         <div className="rd-controls">
           <div className="field">
-            <label>Initial Rate, q<sub>i</sub> ({unit})</label>
-            <input type="range" min={100} max={5000} step={10} value={qiLive}
-              onChange={(e) => setQi(parseFloat(e.target.value))} />
-            <input type="number" value={qiLive} onChange={(e) => setQi(parseFloat(e.target.value||"0"))}/>
+            <label>
+              Initial Rate, q<sub>i</sub> ({unit})
+            </label>
+            <input
+              type="range"
+              min={100}
+              max={5000}
+              step={10}
+              value={qiLive}
+              onChange={(e) => setQi(parseFloat(e.target.value))}
+            />
+            <input
+              type="number"
+              value={qiLive}
+              onChange={(e) => setQi(parseFloat(e.target.value || "0"))}
+            />
           </div>
           <div className="field">
-            <label>Initial Decline, D<sub>i</sub> (1/yr)</label>
-            <input type="range" min={0.05} max={2.0} step={0.01} value={DiLive}
-              onChange={(e) => setDi(parseFloat(e.target.value))} />
-            <input type="number" step={0.01} value={DiLive}
-              onChange={(e) => setDi(parseFloat(e.target.value||"0"))}/>
+            <label>
+              Initial Decline, D<sub>i</sub> (1/yr)
+            </label>
+            <input
+              type="range"
+              min={0.05}
+              max={2.0}
+              step={0.01}
+              value={DiLive}
+              onChange={(e) => setDi(parseFloat(e.target.value))}
+            />
+            <input
+              type="number"
+              step={0.01}
+              value={DiLive}
+              onChange={(e) => setDi(parseFloat(e.target.value || "0"))}
+            />
           </div>
           <div className="field">
             <label>Arps b-factor</label>
-            <input type="range" min={0} max={0.99} step={0.01} value={bLive}
-              onChange={(e) => setB(parseFloat(e.target.value))} />
-            <input type="number" step={0.01} value={bLive}
-              onChange={(e) => setB(clamp(parseFloat(e.target.value||"0"),0,0.99))}/>
+            <input
+              type="range"
+              min={0}
+              max={0.99}
+              step={0.01}
+              value={bLive}
+              onChange={(e) => setB(parseFloat(e.target.value))}
+            />
+            <input
+              type="number"
+              step={0.01}
+              value={bLive}
+              onChange={(e) =>
+                setB(clamp(parseFloat(e.target.value || "0"), 0, 0.99))
+              }
+            />
           </div>
           <div className="field">
-            <label>Economic Limit q<sub>econ</sub> ({unit})</label>
-            <input type="range" min={1} max={400} step={1} value={qEconLive}
-              onChange={(e) => setQEcon(parseFloat(e.target.value))} />
-            <input type="number" step={1} value={qEconLive}
-              onChange={(e) => setQEcon(parseFloat(e.target.value||"0"))}/>
+            <label>
+              Economic Limit q<sub>econ</sub> ({unit})
+            </label>
+            <input
+              type="range"
+              min={1}
+              max={400}
+              step={1}
+              value={qEconLive}
+              onChange={(e) => setQEcon(parseFloat(e.target.value))}
+            />
+            <input
+              type="number"
+              step={1}
+              value={qEconLive}
+              onChange={(e) => setQEcon(parseFloat(e.target.value || "0"))}
+            />
           </div>
           <div className="field" style={{ justifyContent: "center" }}>
             <label className="toggle">
-              <input type="checkbox" checked={maxMode} onChange={(e) => setMaxMode(e.target.checked)} />
-              "Maximum Reserves" (long tail mode)
+              <input
+                type="checkbox"
+                checked={maxMode}
+                onChange={(e) => setMaxMode(e.target.checked)}
+              />
+              &quot;Maximum Reserves&quot; (long tail mode)
             </label>
-            <div style={{ fontSize:12, opacity:0.7 }}>Nudges b↑, D<sub>i</sub>↓, q<sub>econ</sub>↓</div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>
+              Nudges b↑, D<sub>i</sub>↓, q<sub>econ</sub>↓
+            </div>
           </div>
         </div>
 
         {/* Legend */}
         <div className="legend">
-          <div className="pill"><span className="swatch" style={{ background: accentA }} /> Rate q(t) [{unit}]</div>
-          <div className="pill"><span className="swatch" style={{ background: accentB }} /> Cumulative N<sub>p</sub>(t)</div>
-          <div className="pill"><span className="swatch" style={{ background: accentC }} /> Remaining to EUR</div>
+          <div className="pill">
+            <span className="swatch" style={{ background: accentA }} /> Rate
+            q(t) [{unit}]
+          </div>
+          <div className="pill">
+            <span className="swatch" style={{ background: accentB }} />{" "}
+            Cumulative N<sub>p</sub>(t)
+          </div>
+          <div className="pill">
+            <span className="swatch" style={{ background: accentC }} />{" "}
+            Remaining to EUR
+          </div>
         </div>
 
         {/* Chart */}
         <div style={{ position: "relative", padding: "0 12px 8px" }}>
-          <svg width="100%" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Decline and reserves chart">
+          <svg
+            width="100%"
+            viewBox={`0 0 ${W} ${H}`}
+            role="img"
+            aria-label="Decline and reserves chart"
+          >
             <defs>
               <linearGradient id="gradRate" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={accentA} stopOpacity="0.95"/>
-                <stop offset="100%" stopColor={accentA} stopOpacity="0.15"/>
+                <stop offset="0%" stopColor={accentA} stopOpacity="0.95" />
+                <stop offset="100%" stopColor={accentA} stopOpacity="0.15" />
               </linearGradient>
               <linearGradient id="gradCum" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={accentB} stopOpacity="0.95"/>
-                <stop offset="100%" stopColor={accentB} stopOpacity="0.15"/>
+                <stop offset="0%" stopColor={accentB} stopOpacity="0.95" />
+                <stop offset="100%" stopColor={accentB} stopOpacity="0.15" />
               </linearGradient>
               <linearGradient id="bgNebula" x1="0" x2="1" y1="0" y2="1">
                 <stop offset="0%" stopColor={dark ? "#0f1632" : "#eef3ff"} />
@@ -328,8 +452,8 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
               <filter id="glow">
                 <feGaussianBlur stdDeviation="4" result="coloredBlur" />
                 <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
             </defs>
@@ -341,22 +465,56 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
             {Array.from({ length: 6 }).map((_, i) => {
               const y = plot.top + (i / 5) * innerH;
               return (
-                <line key={`h${i}`} x1={plot.left} y1={y} x2={W - plot.right} y2={y}
-                  stroke={dark ? "#1a2444" : "#e3ecff"} strokeDasharray="4 6" strokeWidth="1" />
+                <line
+                  key={`h${i}`}
+                  x1={plot.left}
+                  y1={y}
+                  x2={W - plot.right}
+                  y2={y}
+                  stroke={dark ? "#1a2444" : "#e3ecff"}
+                  strokeDasharray="4 6"
+                  strokeWidth="1"
+                />
               );
             })}
             {Array.from({ length: 11 }).map((_, i) => {
               const xg = plot.left + (i / 10) * innerW;
               return (
-                <line key={`v${i}`} x1={xg} y1={plot.top} x2={xg} y2={H - plot.bottom}
-                  stroke={dark ? "#121a33" : "#eef3ff"} strokeDasharray="3 9" strokeWidth="1" />
+                <line
+                  key={`v${i}`}
+                  x1={xg}
+                  y1={plot.top}
+                  x2={xg}
+                  y2={H - plot.bottom}
+                  stroke={dark ? "#121a33" : "#eef3ff"}
+                  strokeDasharray="3 9"
+                  strokeWidth="1"
+                />
               );
             })}
 
             {/* axes labels */}
-            <text x={plot.left} y={plot.top - 8} fontSize="12" fill={fg}>q(t), {unit}</text>
-            <text x={W - plot.right} y={plot.top - 8} fontSize="12" textAnchor="end" fill={fg}>Nₚ(t), cumulative</text>
-            <text x={W / 2} y={H - 12} fontSize="12" textAnchor="middle" fill={fg}>Time (years)</text>
+            <text x={plot.left} y={plot.top - 8} fontSize="12" fill={fg}>
+              q(t), {unit}
+            </text>
+            <text
+              x={W - plot.right}
+              y={plot.top - 8}
+              fontSize="12"
+              textAnchor="end"
+              fill={fg}
+            >
+              Nₚ(t), cumulative
+            </text>
+            <text
+              x={W / 2}
+              y={H - 12}
+              fontSize="12"
+              textAnchor="middle"
+              fill={fg}
+            >
+              Time (years)
+            </text>
 
             {/* axes ticks */}
             {Array.from({ length: 11 }).map((_, i) => {
@@ -364,8 +522,20 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
               const xt = x(t);
               return (
                 <g key={`xt${i}`}>
-                  <line x1={xt} x2={xt} y1={H - plot.bottom} y2={H - plot.bottom + 6} stroke={fg} />
-                  <text x={xt} y={H - plot.bottom + 20} fontSize="11" textAnchor="middle" fill={fg}>
+                  <line
+                    x1={xt}
+                    x2={xt}
+                    y1={H - plot.bottom}
+                    y2={H - plot.bottom + 6}
+                    stroke={fg}
+                  />
+                  <text
+                    x={xt}
+                    y={H - plot.bottom + 20}
+                    fontSize="11"
+                    textAnchor="middle"
+                    fill={fg}
+                  >
                     {t.toFixed(0)}
                   </text>
                 </g>
@@ -378,8 +548,20 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
               const yy = yRate(qv);
               return (
                 <g key={`yl${i}`}>
-                  <line x1={plot.left - 6} x2={plot.left} y1={yy} y2={yy} stroke={fg} />
-                  <text x={plot.left - 10} y={yy + 4} fontSize="11" textAnchor="end" fill={fg}>
+                  <line
+                    x1={plot.left - 6}
+                    x2={plot.left}
+                    y1={yy}
+                    y2={yy}
+                    stroke={fg}
+                  />
+                  <text
+                    x={plot.left - 10}
+                    y={yy + 4}
+                    fontSize="11"
+                    textAnchor="end"
+                    fill={fg}
+                  >
                     {formatNumber(qv, "")}
                   </text>
                 </g>
@@ -392,8 +574,19 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
               const yy = yCum(Nv);
               return (
                 <g key={`yr${i}`}>
-                  <line x1={W - plot.right} x2={W - plot.right + 6} y1={yy} y2={yy} stroke={fg} />
-                  <text x={W - plot.right + 10} y={yy + 4} fontSize="11" fill={fg}>
+                  <line
+                    x1={W - plot.right}
+                    x2={W - plot.right + 6}
+                    y1={yy}
+                    y2={yy}
+                    stroke={fg}
+                  />
+                  <text
+                    x={W - plot.right + 10}
+                    y={yy + 4}
+                    fontSize="11"
+                    fill={fg}
+                  >
                     {formatVolume(Nv, fluid)}
                   </text>
                 </g>
@@ -404,15 +597,38 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
             <path d={remainingAreaPath} fill={accentC} opacity="0.18" />
 
             {/* cumulative curve */}
-            <path d={cumPath} stroke="url(#gradCum)" strokeWidth="3" fill="none" filter="url(#glow)" />
+            <path
+              d={cumPath}
+              stroke="url(#gradCum)"
+              strokeWidth="3"
+              fill="none"
+              filter="url(#glow)"
+            />
 
             {/* rate curve */}
-            <path d={ratePath} stroke="url(#gradRate)" strokeWidth="3" fill="none" filter="url(#glow)" />
+            <path
+              d={ratePath}
+              stroke="url(#gradRate)"
+              strokeWidth="3"
+              fill="none"
+              filter="url(#glow)"
+            />
 
             {/* econ limit line */}
-            <line x1={plot.left} x2={W - plot.right} y1={yRate(qEconEff)} y2={yRate(qEconEff)}
-              stroke={accentC} strokeDasharray="6 6" />
-            <text x={plot.left + 6} y={yRate(qEconEff) - 6} fontSize="12" fill={accentC}>
+            <line
+              x1={plot.left}
+              x2={W - plot.right}
+              y1={yRate(qEconEff)}
+              y2={yRate(qEconEff)}
+              stroke={accentC}
+              strokeDasharray="6 6"
+            />
+            <text
+              x={plot.left + 6}
+              y={yRate(qEconEff) - 6}
+              fontSize="12"
+              fill={accentC}
+            >
               qₑ₍ₑcₒₙ₎ = {formatNumber(qEconEff, unit)}
             </text>
           </svg>
@@ -434,7 +650,9 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
           </div>
           <div className="badge">
             <div className="k">Remaining Reserves</div>
-            <div className="v">{formatVolume(Math.max(EUR - (points.at(-1)?.Np ?? 0), 0), fluid)}</div>
+            <div className="v">
+              {formatVolume(Math.max(EUR - (points.at(-1)?.Np ?? 0), 0), fluid)}
+            </div>
           </div>
           <div className="badge">
             <div className="k">q @ 5 years</div>
@@ -445,8 +663,12 @@ const ReservoirDreamscape: React.FC<ReservoirDreamscapeProps> = ({
             <div className="v">{formatVolume(cumAt5y, fluid)}</div>
           </div>
           <div className="badge">
-            <div className="k">T<sub>econ</sub></div>
-            <div className="v">{tEcon === Infinity ? "—" : `${tEcon.toFixed(2)} yrs`}</div>
+            <div className="k">
+              T<sub>econ</sub>
+            </div>
+            <div className="v">
+              {tEcon === Infinity ? "—" : `${tEcon.toFixed(2)} yrs`}
+            </div>
           </div>
         </div>
       </div>
