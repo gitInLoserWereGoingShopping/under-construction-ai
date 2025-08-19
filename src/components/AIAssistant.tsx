@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styled, { keyframes, css } from "styled-components";
 import ImpossibleQuestionEngine from "./ImpossibleQuestionEngine";
+import EmotionalColorTranslator from "./EmotionalColorTranslator";
 import FeatureAnnouncementModal from "./FeatureAnnouncementModal";
 import useFeatureAnnouncement from "../hooks/useFeatureAnnouncement";
 
@@ -36,11 +37,12 @@ const experiments: AIExperiment[] = [
     id: "color-emotion",
     name: "Emotional Color Translator",
     description:
-      "Transform emotions into hex colors and generate mood palettes.",
+      "🌟 ACTIVE: Transform your feelings into beautiful sliding gradients. A cozy, smooth experience that makes color selection feel like therapy.",
     icon: "🎨",
     category: "visual",
     weirdness: 5,
     status: "stable",
+    component: EmotionalColorTranslator,
   },
   {
     id: "reverse-search",
