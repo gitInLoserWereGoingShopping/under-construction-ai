@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import styled, { keyframes, css } from "styled-components";
 import Image from "next/image";
+import { NewFeatureComponent } from "../components/NewFeatureComponent";
 
 /* 🧠 Utility: Generate Today’s Cone Code */
 function getCode() {
@@ -50,6 +51,17 @@ const slap = keyframes`
   40%  { transform: translate(-10vw, -10vh) rotate(60deg); opacity: 1; }
   60%  { transform: translate(0, 0) rotate(90deg); opacity: 1; }
   100% { transform: translate(80vw, -20vh) rotate(180deg); opacity: 0; }
+`;
+
+const fadeInUp = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 `;
 
 /* 🧱 Styled Components */
@@ -158,12 +170,19 @@ const Hint = styled.div`
   }
 `;
 
+const DashboardContainer = styled.div`
+  width: 100%;
+  max-width: 1400px;
+  animation: ${fadeInUp} 0.6s ease-out;
+`;
+
 /* 🚧 THE MAIN PAGE */
 export default function Home() {
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
   const [shake, setShake] = useState(false);
   const [slap, setSlap] = useState(false);
+  const [accessGranted, setAccessGranted] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const correctCode = getCode();
 
@@ -171,7 +190,11 @@ export default function Home() {
     e.preventDefault();
 
     if (code.trim() === correctCode) {
-      setMessage("✅ Access granted. Construction beam inbound.");
+      setMessage("✅ Access granted. Loading feature dashboard...");
+      // Transition to the dashboard after a short delay
+      setTimeout(() => {
+        setAccessGranted(true);
+      }, 1500);
     } else {
       const sass = wisdom[Math.floor(Math.random() * wisdom.length)];
       setMessage(sass);
@@ -185,42 +208,64 @@ export default function Home() {
     }
   };
 
+  const handleBackToConstruction = () => {
+    // Reset all state with flair
+    setAccessGranted(false);
+    setCode("");
+    setMessage("🔄 Returning to construction zone...");
+    setShake(false);
+    setSlap(false);
+    // Clear the message after a brief moment and focus input
+    setTimeout(() => {
+      setMessage("");
+      inputRef.current?.focus();
+    }, 800);
+  };
+
   return (
     <Page>
-      <Card>
-        <Title>🚧 Under Construction AI</Title>
-        <p>Enter the daily code or be corrected by a sacred cone.</p>
+      {accessGranted ? (
+        // Feature Dashboard - shows all available features as tiles
+        <DashboardContainer>
+          <NewFeatureComponent onBack={handleBackToConstruction} />
+        </DashboardContainer>
+      ) : (
+        // Construction Page - the daily code entry
+        <Card>
+          <Title>🚧 Under Construction AI</Title>
+          <p>Enter the daily code or be corrected by a sacred cone.</p>
 
-        <StyledForm onSubmit={handleSubmit}>
-          <Input
-            ref={inputRef}
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="CONE-YYYYMMDD-ABC123"
-            $shake={shake}
-          />
-          <Button type="submit">Submit</Button>
-        </StyledForm>
-
-        <Message>{message}</Message>
-
-        <Hint>
-          For demo/testing: today’s code is <code>{correctCode}</code>
-        </Hint>
-
-        {slap && (
-          <Cone>
-            <Image
-              src="/cone.png"
-              width={80}
-              height={80}
-              alt="Cone Slap"
-              priority
+          <StyledForm onSubmit={handleSubmit}>
+            <Input
+              ref={inputRef}
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="CONE-YYYYMMDD-ABC123"
+              $shake={shake}
             />
-          </Cone>
-        )}
-      </Card>
+            <Button type="submit">Submit</Button>
+          </StyledForm>
+
+          <Message>{message}</Message>
+
+          <Hint>
+            For demo/testing: todayz code is <code>{correctCode}</code>
+          </Hint>
+
+          {slap && (
+            <Cone>
+              <Image
+                src="/cone.png"
+                width={80}
+                height={80}
+                alt="Cone Slap"
+                priority
+              />
+            </Cone>
+          )}
+        </Card>
+      )}
     </Page>
   );
 }
