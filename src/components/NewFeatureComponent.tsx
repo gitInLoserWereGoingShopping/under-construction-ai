@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import ReservoirDreamscape from "./ReservoirDreamscape";
+import AIAssistant from "./AIAssistant";
 
 // Types for features
 interface Feature {
@@ -40,19 +41,20 @@ const featuresData: Feature[] = [
   {
     id: "ai-assistant",
     title: "AI Assistant",
-    description: "Smart AI helper for various tasks and workflows.",
+    description:
+      "🧪 Mad Science Lab for weird AI experiments and creative chaos!",
     branch: "ai-assistant",
     icon: "🤖",
-    status: "concept",
+    status: "active",
+    component: AIAssistant,
   },
   {
     id: "data-viz",
     title: "Data Visualization",
-    description:
-      "Interactive charts and analytics dashboard - ready for development!",
+    description: "Interactive charts and analytics dashboard.",
     branch: "data-viz",
     icon: "📊",
-    status: "active",
+    status: "concept",
   },
 ];
 
