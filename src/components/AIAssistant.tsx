@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled, { keyframes, css } from "styled-components";
+import ImpossibleQuestionEngine from "./ImpossibleQuestionEngine";
 
 // Types for our weird AI experiments
 interface AIExperiment {
@@ -10,6 +11,7 @@ interface AIExperiment {
   category: "text" | "visual" | "audio" | "data" | "chaos";
   weirdness: number; // 1-10 scale of how weird this gets
   status: "stable" | "experimental" | "chaotic" | "forbidden" | "legendary";
+  component?: React.FC; // Optional dedicated component
 }
 
 interface AIAssistantProps {
@@ -41,11 +43,13 @@ const experiments: AIExperiment[] = [
   {
     id: "reverse-search",
     name: "Impossible Question Engine",
-    description: "Give it answers, it generates the most creative questions.",
+    description:
+      "🌟 ACTIVE: Conversational AI personalities that transform your answers into mind-bending questions. Choose your companion!",
     icon: "❓",
     category: "text",
     weirdness: 8,
     status: "chaotic",
+    component: ImpossibleQuestionEngine,
   },
   {
     id: "data-poetry",
@@ -610,27 +614,45 @@ Message from the Code Universe:
             {selectedExperiment.description}
           </p>
 
-          <ExperimentInterface>
-            <InputArea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={`Enter your ${selectedExperiment.category} input for the AI to process...`}
-            />
-
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <ActionButton onClick={processExperiment} disabled={isProcessing}>
-                {isProcessing ? "🧪 Processing..." : "✨ Run Experiment"}
-              </ActionButton>
-              <ActionButton
-                $variant="danger"
-                onClick={() => setSelectedExperiment(null)}
-              >
-                ← Back to Lab
-              </ActionButton>
+          {/* Check if experiment has a dedicated component */}
+          {selectedExperiment.component ? (
+            <div style={{ marginTop: "2rem" }}>
+              <selectedExperiment.component />
+              <div style={{ textAlign: "center", marginTop: "2rem" }}>
+                <ActionButton
+                  $variant="danger"
+                  onClick={() => setSelectedExperiment(null)}
+                >
+                  ← Back to Lab
+                </ActionButton>
+              </div>
             </div>
+          ) : (
+            <ExperimentInterface>
+              <InputArea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={`Enter your ${selectedExperiment.category} input for the AI to process...`}
+              />
 
-            {output && <OutputArea>{output}</OutputArea>}
-          </ExperimentInterface>
+              <div style={{ display: "flex", gap: "1rem" }}>
+                <ActionButton
+                  onClick={processExperiment}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? "🧪 Processing..." : "✨ Run Experiment"}
+                </ActionButton>
+                <ActionButton
+                  $variant="danger"
+                  onClick={() => setSelectedExperiment(null)}
+                >
+                  ← Back to Lab
+                </ActionButton>
+              </div>
+
+              {output && <OutputArea>{output}</OutputArea>}
+            </ExperimentInterface>
+          )}
         </ActiveExperiment>
       )}
     </LabContainer>
