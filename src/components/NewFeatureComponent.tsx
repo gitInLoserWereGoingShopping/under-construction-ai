@@ -9,7 +9,7 @@ interface Feature {
   description: string;
   branch: string;
   icon: string;
-  status: "active" | "development" | "concept";
+  status: "active" | "development" | "concept" | "implemented";
   component?: React.FC;
 }
 
@@ -22,10 +22,11 @@ const featuresData: Feature[] = [
   {
     id: "reservoir-dreamscape",
     title: "Reservoir Dreamscape",
-    description: "Current feature in development - your active branch!",
+    description:
+      "✅ Fully implemented petroleum engineering visualization tool!",
     branch: "reservoir-dreamscape",
     icon: "🌊",
-    status: "active",
+    status: "implemented",
     component: ReservoirDreamscape,
   },
   {
@@ -47,10 +48,11 @@ const featuresData: Feature[] = [
   {
     id: "data-viz",
     title: "Data Visualization",
-    description: "Interactive charts and analytics dashboard.",
+    description:
+      "Interactive charts and analytics dashboard - ready for development!",
     branch: "data-viz",
     icon: "📊",
-    status: "concept",
+    status: "active",
   },
 ];
 
@@ -98,6 +100,8 @@ const FeatureTile = styled.div<{ $status: string }>`
         ? "#ff7a18"
         : props.$status === "development"
         ? "#4CAF50"
+        : props.$status === "implemented"
+        ? "#10B981"
         : "#666"};
   border-radius: 12px;
   padding: 2rem;
@@ -114,6 +118,8 @@ const FeatureTile = styled.div<{ $status: string }>`
         ? "#ff8e2b"
         : props.$status === "development"
         ? "#66BB6A"
+        : props.$status === "implemented"
+        ? "#34D399"
         : "#888"};
   }
 
@@ -178,6 +184,8 @@ const StatusBadge = styled.span<{ $status: string }>`
       ? "#ff7a18"
       : props.$status === "development"
       ? "#4CAF50"
+      : props.$status === "implemented"
+      ? "#10B981"
       : "#666"};
   color: ${(props) => (props.$status === "concept" ? "#fff" : "#000")};
   padding: 0.25rem 0.75rem;
