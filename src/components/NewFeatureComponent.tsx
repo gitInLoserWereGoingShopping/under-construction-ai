@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import ReservoirDreamscape from "./ReservoirDreamscape";
 
 // Types for features
 interface Feature {
@@ -9,7 +10,7 @@ interface Feature {
   branch: string;
   icon: string;
   status: "active" | "development" | "concept";
-  component?: React.ComponentType<React.FC>;
+  component?: React.ComponentType<any>;
 }
 
 interface NewFeatureProps {
@@ -25,6 +26,7 @@ const featuresData: Feature[] = [
     branch: "reservoir-dreamscape",
     icon: "🌊",
     status: "active",
+    component: ReservoirDreamscape,
   },
   {
     id: "job-board",
@@ -233,7 +235,9 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
   };
 
   if (selectedFeature) {
-    // If a feature is selected, you could render its component here
+    // If a feature is selected, render its component
+    const FeatureComponent = selectedFeature.component;
+
     return (
       <DashboardWrapper>
         <DashboardHeader>
@@ -241,9 +245,20 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
             {selectedFeature.icon} {selectedFeature.title}
           </DashboardTitle>
           <DashboardSubtitle>
-            Feature implementation goes here
+            Branch: <code>{selectedFeature.branch}</code> • Status:{" "}
+            {selectedFeature.status}
           </DashboardSubtitle>
         </DashboardHeader>
+
+        {/* Render the actual feature component */}
+        {FeatureComponent ? (
+          <FeatureComponent />
+        ) : (
+          <div style={{ padding: "2rem", textAlign: "center", color: "#888" }}>
+            <p>Component not yet implemented for this feature.</p>
+            <p>Create the component and add it to the feature configuration.</p>
+          </div>
+        )}
 
         <ActionsSection>
           <ActionButton onClick={() => setSelectedFeature(null)}>
@@ -258,7 +273,6 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
       </DashboardWrapper>
     );
   }
-
   return (
     <DashboardWrapper>
       <DashboardHeader>
