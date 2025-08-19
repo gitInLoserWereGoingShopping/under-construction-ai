@@ -41,7 +41,8 @@ const featuresData: Feature[] = [
   {
     id: "ai-assistant",
     title: "AI Assistant",
-    description: "🧪 Mad Science Lab for weird AI experiments and creative chaos!",
+    description:
+      "🧪 Mad Science Lab for weird AI experiments and creative chaos!",
     branch: "ai-assistant",
     icon: "🤖",
     status: "active",
