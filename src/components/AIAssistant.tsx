@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import styled, { keyframes, css } from "styled-components";
 import ImpossibleQuestionEngine from "./ImpossibleQuestionEngine";
+import FeatureAnnouncementModal from "./FeatureAnnouncementModal";
+import useFeatureAnnouncement from "../hooks/useFeatureAnnouncement";
 
 // Types for our weird AI experiments
 interface AIExperiment {
@@ -108,6 +110,16 @@ const experiments: AIExperiment[] = [
     category: "chaos",
     weirdness: 11,
     status: "legendary",
+  },
+  {
+    id: "feature-announcements",
+    name: "🎊 Feature Announcement Theater",
+    description:
+      "🌟 NEW: Spectacular modal system for celebrating feature launches with confetti, animations, and professional showcase!",
+    icon: "🎭",
+    category: "chaos",
+    weirdness: 9,
+    status: "experimental",
   },
 ];
 
@@ -438,6 +450,14 @@ const AIAssistant: React.FC<AIAssistantProps> = () => {
   const [output, setOutput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Feature announcement system
+  const {
+    currentAnnouncement,
+    isVisible,
+    showTemplateAnnouncement,
+    hideAnnouncement,
+  } = useFeatureAnnouncement();
+
   const handleExperimentSelect = (experiment: AIExperiment) => {
     if (experiment.status === "forbidden") {
       // Add some theatrical warning
@@ -534,6 +554,19 @@ Message from the Code Universe:
 🎈 Celebration Mode: MAXIMUM
 🍾 Victory Status: COMPLETE
 🌟 Next Adventure: AWAITING...`;
+          break;
+
+        case "feature-announcements":
+          // Show different announcement based on input
+          if (
+            input.toLowerCase().includes("impossible") ||
+            input.toLowerCase().includes("question")
+          ) {
+            showTemplateAnnouncement("impossibleQuestionEngine");
+          } else {
+            showTemplateAnnouncement("featureAnnouncementModal");
+          }
+          result = `🎭 Feature Announcement Theater Activated!\n\n✨ Modal Celebration System Triggered!\n\nInput: "${input}"\n\n🎊 Based on your input, I've launched the appropriate celebration modal!\n\nFeatures:\n• Dynamic modal with confetti effects\n• Multiple celebration levels\n• Professional feature showcase\n• Animated backgrounds and effects\n• Structured accomplishment presentation\n\n🚀 The modal should be visible now - check it out!`;
           break;
 
         default:
@@ -655,6 +688,13 @@ Message from the Code Universe:
           )}
         </ActiveExperiment>
       )}
+
+      {/* Feature Announcement Modal */}
+      <FeatureAnnouncementModal
+        announcement={currentAnnouncement}
+        isVisible={isVisible}
+        onClose={hideAnnouncement}
+      />
     </LabContainer>
   );
 };
