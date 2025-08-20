@@ -13,6 +13,8 @@ interface PongGameState extends BaseGameState {
     powerUps: string[];
     health: number;
     maxHealth: number;
+    energy: number;
+    maxEnergy: number;
   };
   ai: {
     y: number;
@@ -25,6 +27,8 @@ interface PongGameState extends BaseGameState {
     originalSpeed: number;
     health: number;
     maxHealth: number;
+    energy: number;
+    maxEnergy: number;
   };
   ball: {
     x: number;
@@ -37,6 +41,12 @@ interface PongGameState extends BaseGameState {
     color: string;
     trail: { x: number; y: number; alpha: number }[];
     effects: string[];
+    charge: number;
+    maxCharge: number;
+    attachedPowerUps: BallAttachedPowerUp[];
+    radiusOfEffect: number;
+    glowIntensity: number;
+    chargedBy: 'player' | 'ai' | null; // Track who charged the ball
   };
   particles: Particle[];
   lasers: Laser[];
@@ -64,6 +74,18 @@ interface Particle {
   maxLife: number;
 }
 
+interface BallAttachedPowerUp {
+  id: string;
+  type: 'explosive' | 'health_drain' | 'speed_boost';
+  attachTime: number;
+  duration: number;
+  damage: number;
+  color: string;
+  size: number;
+  angle: number; // Rotation around ball
+  pulsePhase: number;
+}
+
 interface Laser {
   id: string;
   x: number;
@@ -79,6 +101,8 @@ interface Laser {
   damage: number;
   energy: number;
   maxEnergy: number;
+  direction: number; // Angle in radians for directional mechanics
+  intent: 'charge' | 'boost' | 'intercept'; // Tactical intent
 }
 
 interface Ball {
@@ -111,7 +135,8 @@ type PowerUpType =
   | "freeze_ai" // Temporarily slows AI movement
   | "multi_ball" // Creates 3 balls
   | "curve_ball" // Ball curves in flight
-  | "size_change"; // Makes ball smaller (harder to hit)
+  | "size_change" // Makes ball smaller (harder to hit)
+  | "ball_bomb"; // NEW: Attaches to ball and explodes on paddle hit!
 
 interface TrainingExample {
   input: number[]; // [ball_x, ball_y, ball_dx, ball_dy, paddle_y, opponent_y]
@@ -256,6 +281,8 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
           powerUps: [],
           health: 100,
           maxHealth: 100,
+          energy: 100,
+          maxEnergy: 100,
         },
         ai: {
           y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
@@ -268,6 +295,8 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
           originalSpeed: PADDLE_SPEED * 0.9,
           health: 100,
           maxHealth: 100,
+          energy: 100,
+          maxEnergy: 100,
         },
         ball: {
           x: CANVAS_WIDTH / 2,
@@ -280,6 +309,12 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
           color: "#ffffff",
           trail: [],
           effects: [],
+          charge: 0,
+          maxCharge: 100,
+          attachedPowerUps: [],
+          radiusOfEffect: 80, // Base radius of effect
+          glowIntensity: 0,
+          chargedBy: null,
         },
         particles: [],
         lasers: [],
@@ -484,6 +519,13 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
           newState.ball.effects.push("multi");
           newState.ball.color = "#ff9f43";
           break;
+
+        case "ball_bomb":
+          // Attach explosive bomb to ball!
+          const bombAttachment = createBallAttachedPowerUp('explosive');
+          newState.ball.attachedPowerUps.push(bombAttachment);
+          newState.ball.color = "#ff4444"; // Red glow for danger!
+          break;
       }
 
       return newState;
@@ -507,6 +549,8 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
         return "Enhanced Ball - Faster and stronger! 🔥";
       case "multi_ball":
         return "Multi Effect - Unpredictable behavior! ✨";
+      case "ball_bomb":
+        return "Ball Bomb - Explodes on paddle impact! 💣";
       default:
         return "Power-up activated!";
     }
@@ -549,6 +593,8 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
         return "255, 107, 107";
       case "multi_ball":
         return "255, 159, 67";
+      case "ball_bomb":
+        return "255, 68, 68";
       default:
         return "255, 255, 255";
     }
@@ -570,6 +616,8 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
         return "🔥";
       case "multi_ball":
         return "✨";
+      case "ball_bomb":
+        return "💣";
       default:
         return "?";
     }
@@ -636,7 +684,33 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
   }, []);
 
   // Laser system for paddle shooting - PEW PEW!
-  const createLaser = useCallback((fromX: number, fromY: number, direction: number, shooter: 'player' | 'ai'): Laser => {
+  const createLaser = useCallback((fromX: number, fromY: number, direction: number, shooter: 'player' | 'ai', targetX?: number, targetY?: number): Laser => {
+    // Determine tactical intent based on direction and game state
+    let intent: 'charge' | 'boost' | 'intercept' = 'charge';
+    
+    if (targetX !== undefined && targetY !== undefined) {
+      const ballX = (gameState as PongGameState).ball?.x || CANVAS_WIDTH / 2;
+      const ballY = (gameState as PongGameState).ball?.y || CANVAS_HEIGHT / 2;
+      const ballDx = (gameState as PongGameState).ball?.dx || 0;
+      
+      // Calculate if this is a rear-shot (boosting ball forward)
+      const isRearShot = shooter === 'player' ? 
+        (ballDx > 0 && targetX > ballX) : // Player shooting behind ball moving right
+        (ballDx < 0 && targetX < ballX);  // AI shooting behind ball moving left
+      
+      // Calculate if this is an intercept shot (hitting ball before it reaches paddle)
+      const distanceToBall = Math.sqrt(Math.pow(targetX - ballX, 2) + Math.pow(targetY - ballY, 2));
+      const isIntercept = distanceToBall < 100 && Math.abs(ballDx) > 4;
+      
+      if (isRearShot) {
+        intent = 'boost';
+      } else if (isIntercept) {
+        intent = 'intercept';
+      } else {
+        intent = 'charge';
+      }
+    }
+    
     return {
       id: `laser_${Date.now()}_${Math.random()}`,
       x: fromX,
@@ -651,9 +725,11 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
       shooter,
       damage: 8,
       energy: 100,
-      maxEnergy: 100
+      maxEnergy: 100,
+      direction,
+      intent
     };
-  }, []);
+  }, [gameState]);
 
   const updateLasers = useCallback((lasers: Laser[]): Laser[] => {
     return lasers
@@ -773,37 +849,118 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
         // Update particles
         newState.particles = updateParticles(newState.particles);
 
+        // Update ball attached power-ups
+        newState.ball.attachedPowerUps = updateBallAttachedPowerUps(newState.ball.attachedPowerUps);
+
         // Update lasers and check collisions - PEW PEW!
         newState.lasers = updateLasers(newState.lasers);
 
-        // Laser collision detection with paddles
+        // Laser collision detection with BALL for charging system!
         newState.lasers.forEach(laser => {
-          // Check collision with player paddle
-          if (laser.shooter === 'ai' && 
-              laser.x <= PADDLE_WIDTH + 10 &&
-              laser.y >= newState.player.y - 10 &&
-              laser.y <= newState.player.y + PADDLE_HEIGHT + 10) {
-            
-            newState.player.health = Math.max(0, newState.player.health - laser.damage);
-            laser.energy = 0; // Mark for removal
-            
-            // Create laser impact particles - more spectacular!
-            const impactParticles = createWallParticles(laser.x, laser.y, 8);
-            newState.particles.push(...impactParticles);
-          }
+          // Check collision with ball
+          const ballDistance = Math.sqrt(
+            Math.pow(laser.x - newState.ball.x, 2) + 
+            Math.pow(laser.y - newState.ball.y, 2)
+          );
           
-          // Check collision with AI paddle
-          if (laser.shooter === 'player' &&
-              laser.x >= CANVAS_WIDTH - PADDLE_WIDTH - 10 &&
-              laser.y >= newState.ai.y - 10 &&
-              laser.y <= newState.ai.y + PADDLE_HEIGHT + 10) {
+          if (ballDistance <= newState.ball.size + 5) {
+            // Calculate proximity-based power scaling
+            const { powerMultiplier, distanceFromPaddle, proximityPercent } = calculateProximityPower(
+              newState.ball.x, 
+              newState.ball.y, 
+              laser.shooter
+            );
             
-            newState.ai.health = Math.max(0, newState.ai.health - laser.damage);
-            laser.energy = 0; // Mark for removal
+            // Check for opposing laser cancellation
+            const { cancelled, convertedEffect, healingBonus } = handleOpposingLaserHit(newState.ball, laser);
             
-            // Create laser impact particles - more spectacular!
-            const impactParticles = createWallParticles(laser.x, laser.y, 8);
-            newState.particles.push(...impactParticles);
+            if (cancelled) {
+              // OPPOSING LASER CANCELLATION!
+              newState.ball.charge = 0; // Cancel existing charge
+              newState.ball.chargedBy = laser.shooter; // Switch ownership
+              newState.ball.color = "#00ffff"; // Cyan for cancelled/converted
+              newState.ball.effects = []; // Clear existing effects
+              
+              // Add converted beneficial effect
+              if (convertedEffect) {
+                newState.ball.effects.push(`converted_${convertedEffect}`);
+              }
+              
+              // Heal the shooter for successful cancellation
+              if (laser.shooter === 'player') {
+                newState.player.health = Math.min(newState.player.maxHealth, newState.player.health + healingBonus);
+              } else {
+                newState.ai.health = Math.min(newState.ai.maxHealth, newState.ai.health + healingBonus);
+              }
+              
+              // Create spectacular cancellation particles
+              const cancellationParticles = createWallParticles(laser.x, laser.y, 20);
+              cancellationParticles.forEach(particle => {
+                particle.color = "#00ffff";
+                particle.size *= 2.5;
+                particle.maxLife *= 2;
+              });
+              newState.particles.push(...cancellationParticles);
+              
+            } else {
+              // Normal laser effects with proximity scaling
+              switch (laser.intent) {
+                case 'charge':
+                  // Proximity-scaled charging
+                  const chargeAmount = Math.floor(15 * powerMultiplier);
+                  newState.ball.charge = Math.min(newState.ball.maxCharge, newState.ball.charge + chargeAmount);
+                  newState.ball.chargedBy = laser.shooter;
+                  newState.ball.color = `hsl(${60 + (newState.ball.charge / newState.ball.maxCharge) * 60}, 80%, ${50 + (newState.ball.charge / newState.ball.maxCharge) * 30}%)`;
+                  
+                  // Proximity-scaled healing
+                  const healAmount = Math.floor(3 * powerMultiplier);
+                  if (laser.shooter === 'player') {
+                    newState.player.health = Math.min(newState.player.maxHealth, newState.player.health + healAmount);
+                  } else {
+                    newState.ai.health = Math.min(newState.ai.maxHealth, newState.ai.health + healAmount);
+                  }
+                  break;
+                  
+                case 'boost':
+                  // Proximity-scaled boost power
+                  const boostMultiplier = 1.2 + (0.4 * powerMultiplier); // 1.2x to 1.6x based on distance
+                  newState.ball.dx *= boostMultiplier;
+                  newState.ball.dy *= (1.1 + 0.2 * powerMultiplier);
+                  newState.ball.charge = Math.min(newState.ball.maxCharge, newState.ball.charge + Math.floor(25 * powerMultiplier));
+                  newState.ball.chargedBy = laser.shooter;
+                  newState.ball.color = '#ffaa00';
+                  newState.ball.effects.push('boosted');
+                  break;
+                  
+                case 'intercept':
+                  // Proximity-scaled disruption
+                  const slowMultiplier = 0.9 - (0.3 * powerMultiplier); // More distance = more disruption
+                  newState.ball.dx *= slowMultiplier;
+                  newState.ball.dy += (Math.random() - 0.5) * 2 * powerMultiplier;
+                  newState.ball.charge = Math.min(newState.ball.maxCharge, newState.ball.charge + Math.floor(10 * powerMultiplier));
+                  newState.ball.chargedBy = laser.shooter;
+                  newState.ball.color = '#aa44ff';
+                  newState.ball.effects.push('intercepted');
+                  break;
+              }
+              
+              // Update radius of effect and glow based on charge
+              newState.ball.radiusOfEffect = 80 + (newState.ball.charge / newState.ball.maxCharge) * 40; // 80-120 radius
+              newState.ball.glowIntensity = proximityPercent * 30; // Outer edge glows more
+            }
+            
+            laser.energy = 0; // Mark laser for removal
+            
+            // Create proximity-scaled particles
+            const particleCount = Math.floor((10 + proximityPercent * 10) * (cancelled ? 2 : 1));
+            const intentParticles = createWallParticles(laser.x, laser.y, particleCount);
+            intentParticles.forEach(particle => {
+              particle.color = cancelled ? '#00ffff' : 
+                             laser.intent === 'boost' ? '#ffaa00' : 
+                             laser.intent === 'intercept' ? '#aa44ff' : laser.color;
+              particle.size *= (1.5 + proximityPercent);
+            });
+            newState.particles.push(...intentParticles);
           }
         });
 
@@ -883,13 +1040,97 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
           newState.ball.dy = relativeIntersectY * BALL_SPEED * 0.8;
           newState.rally++;
 
-          // Create paddle hit particles
-          const paddleParticles = createPaddleParticles(
-            newState.ball.x,
-            newState.ball.y,
-            8
-          );
-          newState.particles.push(...paddleParticles);
+          // ENERGY RESTORATION on paddle hit!
+          newState.player.energy = Math.min(newState.player.maxEnergy, newState.player.energy + 15);
+
+          // Apply charged ball effects!
+          if (newState.ball.charge > 0) {
+            const chargeBonus = newState.ball.charge / newState.ball.maxCharge;
+            let speedMultiplier = 1 + chargeBonus * 0.5;
+            let spinMultiplier = 1 + chargeBonus * 0.3;
+            
+            // Enhanced effects for boosted balls!
+            if (newState.ball.effects.includes('boosted')) {
+              speedMultiplier *= 1.3; // Extra speed for boosted balls
+              spinMultiplier *= 1.5;  // More dramatic spin
+              newState.ball.effects = newState.ball.effects.filter(e => e !== 'boosted');
+              
+              // Heal the player for successful offensive boost!
+              newState.player.health = Math.min(newState.player.maxHealth, newState.player.health + 8);
+            }
+            
+            // Handle converted effects (from opposing laser cancellation)
+            if (newState.ball.effects.includes('converted_boost')) {
+              speedMultiplier *= 1.5; // Converted boosts are even more powerful!
+              spinMultiplier *= 1.8;
+              newState.ball.effects = newState.ball.effects.filter(e => e !== 'converted_boost');
+              
+              // Extra healing for successful conversion usage
+              newState.player.health = Math.min(newState.player.maxHealth, newState.player.health + 12);
+            }
+            
+            if (newState.ball.effects.includes('converted_charge')) {
+              // Converted charges provide defensive benefits
+              newState.player.health = Math.min(newState.player.maxHealth, newState.player.health + 10);
+              newState.player.energy = Math.min(newState.player.maxEnergy, newState.player.energy + 20);
+              newState.ball.effects = newState.ball.effects.filter(e => e !== 'converted_charge');
+            }
+            
+            if (newState.ball.effects.includes('converted_intercept')) {
+              // Converted intercepts provide ball control
+              newState.ball.dx *= 1.1; // Slight speed boost
+              newState.ball.dy *= 0.8; // More controlled trajectory
+              newState.player.health = Math.min(newState.player.maxHealth, newState.player.health + 6);
+              newState.ball.effects = newState.ball.effects.filter(e => e !== 'converted_intercept');
+            }
+            
+            // Reduced effects for intercepted balls
+            if (newState.ball.effects.includes('intercepted')) {
+              speedMultiplier *= 0.9; // Slightly reduce boost from intercept
+              newState.ball.effects = newState.ball.effects.filter(e => e !== 'intercepted');
+            }
+            
+            newState.ball.dx *= speedMultiplier;
+            newState.ball.dy *= spinMultiplier;
+            
+            // Create enhanced particles for charged impact
+            const chargedParticles = createPaddleParticles(
+              newState.ball.x,
+              newState.ball.y,
+              12 + Math.floor(chargeBonus * 8)
+            );
+            chargedParticles.forEach(particle => {
+              particle.color = newState.ball.color;
+              particle.size *= (1 + chargeBonus);
+            });
+            newState.particles.push(...chargedParticles);
+            
+            // Discharge the ball
+            newState.ball.charge = 0;
+            newState.ball.color = "#ffffff";
+          } else {
+            // Create normal paddle hit particles
+            const paddleParticles = createPaddleParticles(
+              newState.ball.x,
+              newState.ball.y,
+              8
+            );
+            newState.particles.push(...paddleParticles);
+          }
+
+          // Trigger attached power-up explosions on player paddle!
+          newState.ball.attachedPowerUps.forEach(attachedPowerUp => {
+            if (attachedPowerUp.type === 'explosive') {
+              const updatedState = triggerBallAttachedExplosion(
+                attachedPowerUp, 
+                newState.ball.x, 
+                newState.ball.y, 
+                'player', 
+                newState
+              );
+              Object.assign(newState, updatedState);
+            }
+          });
 
           // Collect training data for AI
           const trainingExample = collectTrainingData(
@@ -922,13 +1163,97 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
             newState.ball.dy = relativeIntersectY * BALL_SPEED * 0.8;
             newState.rally++;
 
-            // Create paddle hit particles for AI paddle too
-            const paddleParticles = createPaddleParticles(
-              newState.ball.x,
-              newState.ball.y,
-              8
-            );
-            newState.particles.push(...paddleParticles);
+            // ENERGY RESTORATION for AI too!
+            newState.ai.energy = Math.min(newState.ai.maxEnergy, newState.ai.energy + 15);
+
+            // Apply charged ball effects for AI paddle too!
+            if (newState.ball.charge > 0) {
+              const chargeBonus = newState.ball.charge / newState.ball.maxCharge;
+              let speedMultiplier = 1 + chargeBonus * 0.5;
+              let spinMultiplier = 1 + chargeBonus * 0.3;
+              
+              // Enhanced effects for boosted balls!
+              if (newState.ball.effects.includes('boosted')) {
+                speedMultiplier *= 1.3; // Extra speed for boosted balls
+                spinMultiplier *= 1.5;  // More dramatic spin
+                newState.ball.effects = newState.ball.effects.filter(e => e !== 'boosted');
+                
+                // Heal the AI for successful offensive boost!
+                newState.ai.health = Math.min(newState.ai.maxHealth, newState.ai.health + 8);
+              }
+              
+              // Handle converted effects for AI too
+              if (newState.ball.effects.includes('converted_boost')) {
+                speedMultiplier *= 1.5; // Converted boosts are even more powerful!
+                spinMultiplier *= 1.8;
+                newState.ball.effects = newState.ball.effects.filter(e => e !== 'converted_boost');
+                
+                // Extra healing for successful conversion usage
+                newState.ai.health = Math.min(newState.ai.maxHealth, newState.ai.health + 12);
+              }
+              
+              if (newState.ball.effects.includes('converted_charge')) {
+                // Converted charges provide defensive benefits
+                newState.ai.health = Math.min(newState.ai.maxHealth, newState.ai.health + 10);
+                newState.ai.energy = Math.min(newState.ai.maxEnergy, newState.ai.energy + 20);
+                newState.ball.effects = newState.ball.effects.filter(e => e !== 'converted_charge');
+              }
+              
+              if (newState.ball.effects.includes('converted_intercept')) {
+                // Converted intercepts provide ball control
+                newState.ball.dx *= 1.1; // Slight speed boost
+                newState.ball.dy *= 0.8; // More controlled trajectory
+                newState.ai.health = Math.min(newState.ai.maxHealth, newState.ai.health + 6);
+                newState.ball.effects = newState.ball.effects.filter(e => e !== 'converted_intercept');
+              }
+              
+              // Reduced effects for intercepted balls
+              if (newState.ball.effects.includes('intercepted')) {
+                speedMultiplier *= 0.9; // Slightly reduce boost from intercept
+                newState.ball.effects = newState.ball.effects.filter(e => e !== 'intercepted');
+              }
+              
+              newState.ball.dx *= speedMultiplier;
+              newState.ball.dy *= spinMultiplier;
+              
+              // Create enhanced particles for charged impact
+              const chargedParticles = createPaddleParticles(
+                newState.ball.x,
+                newState.ball.y,
+                12 + Math.floor(chargeBonus * 8)
+              );
+              chargedParticles.forEach(particle => {
+                particle.color = newState.ball.color;
+                particle.size *= (1 + chargeBonus);
+              });
+              newState.particles.push(...chargedParticles);
+              
+              // Discharge the ball
+              newState.ball.charge = 0;
+              newState.ball.color = "#ffffff";
+            } else {
+              // Create paddle hit particles for AI paddle too
+              const paddleParticles = createPaddleParticles(
+                newState.ball.x,
+                newState.ball.y,
+                8
+              );
+              newState.particles.push(...paddleParticles);
+            }
+
+            // Trigger attached power-up explosions on AI paddle!
+            newState.ball.attachedPowerUps.forEach(attachedPowerUp => {
+              if (attachedPowerUp.type === 'explosive') {
+                const updatedState = triggerBallAttachedExplosion(
+                  attachedPowerUp, 
+                  newState.ball.x, 
+                  newState.ball.y, 
+                  'ai', 
+                  newState
+                );
+                Object.assign(newState, updatedState);
+              }
+            });
 
             // Collect training data for AI
             const trainingExample = collectTrainingData(
@@ -1162,6 +1487,126 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
     );
     ctx.shadowBlur = 0;
 
+    // Draw radius of effect glow around ball - PROXIMITY POWER VISUAL!
+    if (pongGameState.ball.charge > 0 || pongGameState.ball.glowIntensity > 0) {
+      ctx.save();
+      
+      // Outer radius glow (highest power zone)
+      const outerRadius = pongGameState.ball.radiusOfEffect;
+      const innerRadius = pongGameState.ball.radiusOfEffect * 0.6;
+      
+      // Create radial gradient for proximity effect
+      const gradient = ctx.createRadialGradient(
+        pongGameState.ball.x, pongGameState.ball.y, 0,
+        pongGameState.ball.x, pongGameState.ball.y, outerRadius
+      );
+      
+      const glowAlpha = Math.max(0.1, pongGameState.ball.glowIntensity / 30);
+      const chargeAlpha = pongGameState.ball.charge / pongGameState.ball.maxCharge * 0.3;
+      const totalAlpha = Math.min(0.4, glowAlpha + chargeAlpha);
+      
+      // Color based on who charged it
+      let glowColor = pongGameState.ball.chargedBy === 'player' ? '0, 255, 136' : 
+                     pongGameState.ball.chargedBy === 'ai' ? '255, 68, 68' : '255, 255, 255';
+      
+      gradient.addColorStop(0, `rgba(${glowColor}, 0)`);
+      gradient.addColorStop(0.6, `rgba(${glowColor}, ${totalAlpha * 0.3})`);
+      gradient.addColorStop(0.8, `rgba(${glowColor}, ${totalAlpha * 0.6})`);
+      gradient.addColorStop(1, `rgba(${glowColor}, ${totalAlpha})`);
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(pongGameState.ball.x, pongGameState.ball.y, outerRadius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw proximity power indicators (rings)
+      for (let i = 1; i <= 3; i++) {
+        const ringRadius = outerRadius * (0.3 + i * 0.2);
+        const ringAlpha = totalAlpha * (4 - i) / 3 * 0.5;
+        
+        ctx.strokeStyle = `rgba(${glowColor}, ${ringAlpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pongGameState.ball.x, pongGameState.ball.y, ringRadius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      
+      ctx.restore();
+    }
+
+    // Draw ball attached power-ups orbiting the ball - SPECTACULAR!
+    pongGameState.ball.attachedPowerUps.forEach((attachedPowerUp) => {
+      const orbitRadius = pongGameState.ball.size / 2 + 15;
+      const orbX = pongGameState.ball.x + Math.cos(attachedPowerUp.angle) * orbitRadius;
+      const orbY = pongGameState.ball.y + Math.sin(attachedPowerUp.angle) * orbitRadius;
+      
+      // Pulsing effect
+      const pulseSize = attachedPowerUp.size * (1 + Math.sin(attachedPowerUp.pulsePhase) * 0.3);
+      
+      // Draw with glow
+      ctx.shadowColor = attachedPowerUp.color;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = attachedPowerUp.color;
+      ctx.fillRect(
+        orbX - pulseSize / 2,
+        orbY - pulseSize / 2,
+        pulseSize,
+        pulseSize
+      );
+      
+      // Draw connecting line to ball
+      ctx.strokeStyle = attachedPowerUp.color;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.4;
+      ctx.beginPath();
+      ctx.moveTo(pongGameState.ball.x, pongGameState.ball.y);
+      ctx.lineTo(orbX, orbY);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+    ctx.shadowBlur = 0;
+
+    // Draw charge indicator around ball with proximity power zones
+    if (pongGameState.ball.charge > 0) {
+      const chargePercent = pongGameState.ball.charge / pongGameState.ball.maxCharge;
+      const chargeRadius = pongGameState.ball.size / 2 + 8;
+      
+      // Main charge arc
+      ctx.strokeStyle = pongGameState.ball.color;
+      ctx.lineWidth = 4;
+      ctx.globalAlpha = 0.9;
+      
+      ctx.beginPath();
+      ctx.arc(
+        pongGameState.ball.x,
+        pongGameState.ball.y,
+        chargeRadius,
+        -Math.PI / 2,
+        -Math.PI / 2 + (chargePercent * Math.PI * 2)
+      );
+      ctx.stroke();
+      
+      // Add proximity power indicators around charge ring
+      const powerZones = 8;
+      for (let i = 0; i < powerZones; i++) {
+        const angle = (i / powerZones) * Math.PI * 2;
+        const zoneRadius = chargeRadius + 3;
+        const zoneX = pongGameState.ball.x + Math.cos(angle) * zoneRadius;
+        const zoneY = pongGameState.ball.y + Math.sin(angle) * zoneRadius;
+        
+        // Outer zones are brighter (higher power)
+        const distanceFromCenter = 1; // All points are same distance from ball center
+        const powerLevel = 0.5 + (i / powerZones) * 0.5; // Simulate outer = higher power
+        
+        ctx.fillStyle = `rgba(255, 255, 255, ${powerLevel * chargePercent * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(zoneX, zoneY, 2 * powerLevel, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      ctx.globalAlpha = 1;
+    }
+
     // Draw player paddle
     ctx.fillStyle = "#667eea";
     ctx.fillRect(10, pongGameState.player.y, PADDLE_WIDTH, PADDLE_HEIGHT);
@@ -1173,6 +1618,14 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.strokeRect(10, pongGameState.player.y - 15, PADDLE_WIDTH, 4);
+
+    // Player energy bar
+    const playerEnergyPercent = pongGameState.player.energy / pongGameState.player.maxEnergy;
+    ctx.fillStyle = '#00aaff';
+    ctx.fillRect(10, pongGameState.player.y - 25, PADDLE_WIDTH * playerEnergyPercent, 4);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(10, pongGameState.player.y - 25, PADDLE_WIDTH, 4);
 
     // Draw AI paddle with neural activity visualization
     const aiColor = `hsl(${120 + pongGameState.ai.confidence * 60}, 70%, 50%)`;
@@ -1191,6 +1644,14 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.strokeRect(CANVAS_WIDTH - PADDLE_WIDTH - 10, pongGameState.ai.y - 15, PADDLE_WIDTH, 4);
+
+    // AI energy bar
+    const aiEnergyPercent = pongGameState.ai.energy / pongGameState.ai.maxEnergy;
+    ctx.fillStyle = '#00aaff';
+    ctx.fillRect(CANVAS_WIDTH - PADDLE_WIDTH - 10, pongGameState.ai.y - 25, PADDLE_WIDTH * aiEnergyPercent, 4);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(CANVAS_WIDTH - PADDLE_WIDTH - 10, pongGameState.ai.y - 25, PADDLE_WIDTH, 4);
 
     // Neural network confidence indicator
     ctx.fillStyle = aiColor;
@@ -1260,14 +1721,33 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
     pongGameState.lasers.forEach((laser) => {
       ctx.save();
       
+      // Intent-based visual styling
+      let coreColor = '#ffffff';
+      let glowIntensity = 15;
+      
+      switch (laser.intent) {
+        case 'boost':
+          coreColor = '#ffff00'; // Bright yellow core for boost shots
+          glowIntensity = 20;
+          break;
+        case 'intercept':
+          coreColor = '#ff00ff'; // Magenta core for intercept shots
+          glowIntensity = 18;
+          break;
+        case 'charge':
+          coreColor = '#ffffff'; // Standard white core
+          glowIntensity = 15;
+          break;
+      }
+      
       // Main laser beam
       ctx.strokeStyle = laser.color;
       ctx.lineWidth = laser.width;
       ctx.globalAlpha = laser.alpha;
       
-      // Add glow effect
+      // Add intent-specific glow effect
       ctx.shadowColor = laser.glowColor;
-      ctx.shadowBlur = 15;
+      ctx.shadowBlur = glowIntensity;
       
       ctx.beginPath();
       ctx.moveTo(laser.x, laser.y);
@@ -1275,8 +1755,8 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
                  laser.y + laser.length * Math.sin(Math.atan2(laser.dy, laser.dx)));
       ctx.stroke();
       
-      // Add bright core
-      ctx.strokeStyle = '#ffffff';
+      // Add bright intent-specific core
+      ctx.strokeStyle = coreColor;
       ctx.lineWidth = laser.width * 0.3;
       ctx.shadowBlur = 5;
       ctx.stroke();
@@ -1376,25 +1856,35 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
           const pongState = prevState as PongGameState;
           const newState = { ...pongState };
           
-          // Determine which side to shoot from based on target position
+          // Determine which side to shoot from and check energy
           if (targetX < CANVAS_WIDTH / 2) {
             // Left side - player shoots
-            const laser = createLaser(
-              PADDLE_WIDTH + 15,
-              newState.player.y + PADDLE_HEIGHT / 2,
-              1, // Direction right
-              'player'
-            );
-            newState.lasers.push(laser);
+            if (newState.player.energy >= 25) { // Energy cost for shooting
+              const laser = createLaser(
+                PADDLE_WIDTH + 15,
+                newState.player.y + PADDLE_HEIGHT / 2,
+                1, // Direction right
+                'player',
+                targetX, // Pass target for intent analysis
+                targetY
+              );
+              newState.lasers.push(laser);
+              newState.player.energy -= 25; // Consume energy
+            }
           } else {
             // Right side - AI shoots (with some strategic intelligence)
-            const laser = createLaser(
-              CANVAS_WIDTH - PADDLE_WIDTH - 15,
-              newState.ai.y + PADDLE_HEIGHT / 2,
-              -1, // Direction left
-              'ai'
-            );
-            newState.lasers.push(laser);
+            if (newState.ai.energy >= 25) { // Energy cost for shooting
+              const laser = createLaser(
+                CANVAS_WIDTH - PADDLE_WIDTH - 15,
+                newState.ai.y + PADDLE_HEIGHT / 2,
+                -1, // Direction left
+                'ai',
+                targetX, // Pass target for intent analysis
+                targetY
+              );
+              newState.lasers.push(laser);
+              newState.ai.energy -= 25; // Consume energy
+            }
           }
           
           return newState;
@@ -1405,6 +1895,106 @@ const NeuralPongGame: React.FC<GameEngineProps> = ({
     // Store event handler reference for canvas events
     (window as unknown as Record<string, unknown>).neuralPongLaserHandler = handleEvent;
   }, [createLaser]);
+
+  // Ball-attached power-up functions
+  const createBallAttachedPowerUp = useCallback((type: 'explosive' | 'health_drain' | 'speed_boost'): BallAttachedPowerUp => {
+    return {
+      id: Math.random().toString(36).substr(2, 9),
+      type,
+      attachTime: Date.now(),
+      duration: 8000, // 8 seconds
+      damage: type === 'explosive' ? 25 : type === 'health_drain' ? 3 : 0,
+      color: type === 'explosive' ? '#ff4444' : type === 'health_drain' ? '#9f44ff' : '#44ff44',
+      size: 6,
+      angle: Math.random() * Math.PI * 2,
+      pulsePhase: 0
+    };
+  }, []);
+
+  const updateBallAttachedPowerUps = useCallback((attachedPowerUps: BallAttachedPowerUp[]): BallAttachedPowerUp[] => {
+    const currentTime = Date.now();
+    return attachedPowerUps
+      .map(powerUp => ({
+        ...powerUp,
+        angle: powerUp.angle + 0.05, // Rotate around ball
+        pulsePhase: powerUp.pulsePhase + 0.1 // Pulsing effect
+      }))
+      .filter(powerUp => currentTime - powerUp.attachTime < powerUp.duration);
+  }, []);
+
+  const triggerBallAttachedExplosion = useCallback((attachedPowerUp: BallAttachedPowerUp, ballX: number, ballY: number, targetPaddle: 'player' | 'ai', currentState: PongGameState): PongGameState => {
+    const newState = { ...currentState };
+    
+    // Damage the target paddle
+    if (targetPaddle === 'player') {
+      newState.player.health = Math.max(0, newState.player.health - attachedPowerUp.damage);
+    } else {
+      newState.ai.health = Math.max(0, newState.ai.health - attachedPowerUp.damage);
+    }
+    
+    // Create spectacular explosion particles - using the modular system!
+    const explosionParticles = createWallParticles(ballX, ballY, 15);
+    explosionParticles.forEach(particle => {
+      particle.color = attachedPowerUp.color;
+      particle.size *= 2;
+      particle.maxLife *= 1.5;
+    });
+    newState.particles.push(...explosionParticles);
+    
+    // Remove the attached power-up
+    newState.ball.attachedPowerUps = newState.ball.attachedPowerUps.filter(p => p.id !== attachedPowerUp.id);
+    
+    return newState;
+  }, [createWallParticles]);
+
+  // Proximity-based power calculation system
+  const calculateProximityPower = useCallback((ballX: number, ballY: number, shooter: 'player' | 'ai'): { 
+    powerMultiplier: number; 
+    distanceFromPaddle: number; 
+    proximityPercent: number 
+  } => {
+    // Calculate distance from shooter's paddle
+    const paddleX = shooter === 'player' ? PADDLE_WIDTH / 2 + 10 : CANVAS_WIDTH - PADDLE_WIDTH / 2 - 10;
+    const paddleY = shooter === 'player' ? 
+      ((gameState as PongGameState).player?.y || CANVAS_HEIGHT / 2) + PADDLE_HEIGHT / 2 :
+      ((gameState as PongGameState).ai?.y || CANVAS_HEIGHT / 2) + PADDLE_HEIGHT / 2;
+    
+    const distanceFromPaddle = Math.sqrt(
+      Math.pow(ballX - paddleX, 2) + Math.pow(ballY - paddleY, 2)
+    );
+    
+    const radiusOfEffect = ((gameState as PongGameState).ball?.radiusOfEffect || 80);
+    
+    // Calculate proximity percentage (0 = at paddle, 1 = at edge of radius)
+    const proximityPercent = Math.min(1, distanceFromPaddle / radiusOfEffect);
+    
+    // Power multiplier: outer edge = 2.5x, center = 0.5x, linear scale
+    const powerMultiplier = 0.5 + (proximityPercent * 2.0);
+    
+    return { powerMultiplier, distanceFromPaddle, proximityPercent };
+  }, [gameState]);
+
+  // Opposing laser cancellation and beneficial conversion
+  const handleOpposingLaserHit = useCallback((currentBall: any, incomingLaser: Laser): {
+    cancelled: boolean;
+    convertedEffect: string | null;
+    healingBonus: number;
+  } => {
+    // Check if ball is charged by opposing team
+    if (currentBall.chargedBy && currentBall.chargedBy !== incomingLaser.shooter) {
+      return {
+        cancelled: true,
+        convertedEffect: incomingLaser.intent,
+        healingBonus: 15 // Bonus healing for successful cancellation
+      };
+    }
+    
+    return {
+      cancelled: false,
+      convertedEffect: null,
+      healingBonus: 0
+    };
+  }, []);
 
   // Start game loop
   useEffect(() => {
