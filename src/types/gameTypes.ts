@@ -25,7 +25,14 @@ export interface GamepadState {
 }
 
 export interface GameEvent {
-  type: "start" | "pause" | "resume" | "end" | "score" | "achievement" | "LASER_SHOOT";
+  type:
+    | "start"
+    | "pause"
+    | "resume"
+    | "end"
+    | "score"
+    | "achievement"
+    | "LASER_SHOOT";
   data?: Record<string, unknown>;
 }
 

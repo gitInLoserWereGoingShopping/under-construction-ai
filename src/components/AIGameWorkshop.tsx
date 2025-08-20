@@ -268,6 +268,119 @@ const ExitButton = styled.button`
   }
 `;
 
+const TryAgainButton = styled.button`
+  background: rgba(78, 205, 196, 0.8);
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  pointer-events: auto;
+  margin-right: 1rem;
+
+  &:hover {
+    background: rgba(78, 205, 196, 1);
+    transform: scale(1.05);
+  }
+`;
+
+const GameButtonsContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+`;
+
+const GameOverModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+`;
+
+const ModalContent = styled.div`
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 50, 0.95),
+    rgba(20, 20, 40, 0.95)
+  );
+  border: 2px solid rgba(102, 126, 234, 0.5);
+  border-radius: 20px;
+  padding: 3rem 2rem;
+  max-width: 500px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+`;
+
+const ModalTitle = styled.h2`
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+`;
+
+const ModalStats = styled.div`
+  margin: 2rem 0;
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+  }
+
+  .final-score {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 1rem 0;
+    color: #4ecdc4;
+  }
+`;
+
+const ModalButtons = styled.div`
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+`;
+
+const ModalButton = styled.button<{ $primary?: boolean }>`
+  background: ${(props) =>
+    props.$primary
+      ? "linear-gradient(135deg, #667eea, #764ba2)"
+      : "rgba(255, 255, 255, 0.1)"};
+  border: 2px solid
+    ${(props) => (props.$primary ? "transparent" : "rgba(255, 255, 255, 0.3)")};
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    background: ${(props) =>
+      props.$primary
+        ? "linear-gradient(135deg, #5a67d8, #6b46c1)"
+        : "rgba(255, 255, 255, 0.2)"};
+  }
+`;
+
 const MatrixBackground = styled.div`
   position: absolute;
   top: 0;
@@ -387,6 +500,13 @@ const AIGameWorkshop: React.FC = () => {
   const [selectedGame, setSelectedGame] = useState<GameConfig | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameState, setGameState] = useState<GameState>({});
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
+  const [gameResult, setGameResult] = useState<{
+    winner: "player" | "ai";
+    playerScore: number;
+    aiScore: number;
+    maxRally: number;
+  } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Control state
@@ -398,21 +518,56 @@ const AIGameWorkshop: React.FC = () => {
   });
 
   // Game event handler
-  const handleGameEvent = useCallback((event: GameEvent) => {
-    console.log("Game Event:", event);
+  const handleGameEvent = useCallback(
+    (event: GameEvent) => {
+      console.log("Game Event:", event);
 
-    switch (event.type) {
-      case "end":
-        setIsPlaying(false);
-        setSelectedGame(null);
-        break;
-      // Handle other events...
-    }
-  }, []);
+      switch (event.type) {
+        case "end":
+          // Extract game result data for Neural Network Pong
+          if (selectedGame?.name === "Neural Network Pong" && event.data) {
+            const data = event.data as {
+              winner?: "player" | "ai";
+              finalScore?: number[];
+              maxRally?: number;
+            };
+            setGameResult({
+              winner: data.winner || "ai",
+              playerScore: data.finalScore?.[0] || 0,
+              aiScore: data.finalScore?.[1] || 0,
+              maxRally: data.maxRally || 0,
+            });
+            setShowGameOverModal(true);
+          } else {
+            // For other games, exit immediately
+            setIsPlaying(false);
+            setSelectedGame(null);
+          }
+          break;
+        // Handle other events...
+      }
+    },
+    [selectedGame]
+  );
 
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Global shortcuts for game over state
+      if (isPlaying && (gameState as { gameOver?: boolean }).gameOver) {
+        if (e.key === "r" || e.key === "R") {
+          e.preventDefault();
+          tryAgain();
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          exitGame();
+          return;
+        }
+      }
+
+      // Regular keyboard state tracking
       setControls((prev) => ({
         ...prev,
         keyboard: { ...prev.keyboard, [e.key]: true },
@@ -435,14 +590,33 @@ const AIGameWorkshop: React.FC = () => {
         window.removeEventListener("keyup", handleKeyUp);
       };
     }
-  }, [isPlaying]);
+  }, [isPlaying, gameState]);
 
   // Mouse controls
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
+      if (!canvasRef.current) return;
+
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+
+      // Get mouse coordinates relative to full canvas
+      const rawX = (e.clientX - rect.left) * scaleX;
+      const rawY = (e.clientY - rect.top) * scaleY;
+
+      // Calculate game area offset (centering)
+      const gameOffsetX = (canvas.width - 800) / 2; // 800 is CANVAS_WIDTH
+      const gameOffsetY = (canvas.height - 600) / 2; // 600 is CANVAS_HEIGHT
+
+      // Convert to game coordinates
+      const gameX = rawX - gameOffsetX;
+      const gameY = rawY - gameOffsetY;
+
       setControls((prev) => ({
         ...prev,
-        mouse: { ...prev.mouse, x: e.clientX, y: e.clientY },
+        mouse: { ...prev.mouse, x: gameX, y: gameY },
       }));
     };
 
@@ -540,30 +714,48 @@ const AIGameWorkshop: React.FC = () => {
   // Handle laser shooting
   const handleCanvasShoot = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (selectedGame?.name !== "Neural Network Pong") return;
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
-    const targetX = (event.clientX - rect.left) * scaleX;
-    const targetY = (event.clientY - rect.top) * scaleY;
 
-    // Call the neural pong laser handler directly
-    const handler = (window as unknown as Record<string, unknown>).neuralPongLaserHandler as (event: any) => void;
-    if (handler) {
-      handler({
-        type: 'LASER_SHOOT',
-        data: { targetX, targetY, timestamp: Date.now() }
-      });
+    // Get mouse coordinates relative to full canvas
+    const rawX = (event.clientX - rect.left) * scaleX;
+    const rawY = (event.clientY - rect.top) * scaleY;
+
+    // Calculate game area offset (centering)
+    const gameOffsetX = (canvas.width - 800) / 2; // 800 is CANVAS_WIDTH
+    const gameOffsetY = (canvas.height - 600) / 2; // 600 is CANVAS_HEIGHT
+
+    // Convert to game coordinates
+    const targetX = rawX - gameOffsetX;
+    const targetY = rawY - gameOffsetY;
+
+    // Only shoot if clicking within the game area
+    if (targetX >= 0 && targetX <= 800 && targetY >= 0 && targetY <= 600) {
+      // Call the neural pong laser handler directly
+      const handler = (window as unknown as Record<string, unknown>)
+        .neuralPongLaserHandler as
+        | ((event: {
+            type: string;
+            data: { targetX: number; targetY: number; timestamp: number };
+          }) => void)
+        | undefined;
+      if (handler) {
+        handler({
+          type: "LASER_SHOOT",
+          data: { targetX, targetY, timestamp: Date.now() },
+        });
+      }
     }
   };
 
   const handleTouchShoot = (event: React.TouchEvent<HTMLCanvasElement>) => {
     if (selectedGame?.name !== "Neural Network Pong") return;
-    
+
     event.preventDefault();
     const canvas = canvasRef.current;
     if (!canvas || event.touches.length === 0) return;
@@ -571,18 +763,36 @@ const AIGameWorkshop: React.FC = () => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
-    const touch = event.touches[0];
-    const targetX = (touch.clientX - rect.left) * scaleX;
-    const targetY = (touch.clientY - rect.top) * scaleY;
 
-    // Call the neural pong laser handler directly
-    const handler = (window as unknown as Record<string, unknown>).neuralPongLaserHandler as (event: any) => void;
-    if (handler) {
-      handler({
-        type: 'LASER_SHOOT',
-        data: { targetX, targetY, timestamp: Date.now() }
-      });
+    const touch = event.touches[0];
+    // Get touch coordinates relative to full canvas
+    const rawX = (touch.clientX - rect.left) * scaleX;
+    const rawY = (touch.clientY - rect.top) * scaleY;
+
+    // Calculate game area offset (centering)
+    const gameOffsetX = (canvas.width - 800) / 2; // 800 is CANVAS_WIDTH
+    const gameOffsetY = (canvas.height - 600) / 2; // 600 is CANVAS_HEIGHT
+
+    // Convert to game coordinates
+    const targetX = rawX - gameOffsetX;
+    const targetY = rawY - gameOffsetY;
+
+    // Only shoot if touching within the game area
+    if (targetX >= 0 && targetX <= 800 && targetY >= 0 && targetY <= 600) {
+      // Call the neural pong laser handler directly
+      const handler = (window as unknown as Record<string, unknown>)
+        .neuralPongLaserHandler as
+        | ((event: {
+            type: string;
+            data: { targetX: number; targetY: number; timestamp: number };
+          }) => void)
+        | undefined;
+      if (handler) {
+        handler({
+          type: "LASER_SHOOT",
+          data: { targetX, targetY, timestamp: Date.now() },
+        });
+      }
     }
   };
 
@@ -590,6 +800,23 @@ const AIGameWorkshop: React.FC = () => {
     setIsPlaying(false);
     setSelectedGame(null);
     setGameState({});
+    setShowGameOverModal(false);
+    setGameResult(null);
+  };
+
+  const playAgain = () => {
+    setShowGameOverModal(false);
+    setGameResult(null);
+    setGameState({}); // Reset game state to restart
+  };
+
+  const tryAgain = () => {
+    // Same as playAgain but for in-game overlay
+    setGameState({}); // Reset game state to restart
+  };
+
+  const backToDashboard = () => {
+    exitGame();
   };
 
   if (isPlaying && selectedGame) {
@@ -603,14 +830,29 @@ const AIGameWorkshop: React.FC = () => {
           height={window.innerHeight}
           onClick={handleCanvasShoot}
           onTouchStart={handleTouchShoot}
-          style={{ cursor: selectedGame?.name === "Neural Network Pong" ? "crosshair" : "default" }}
+          style={{
+            cursor:
+              selectedGame?.name === "Neural Network Pong"
+                ? "crosshair"
+                : "default",
+          }}
         />
         <GameOverlay>
-          <GameUI>
-            <h3>{selectedGame.name}</h3>
-            <p>Score: {(gameState as { score?: number }).score || 0}</p>
-          </GameUI>
-          <ExitButton onClick={exitGame}>Exit Game</ExitButton>
+          {selectedGame.name !== "Neural Network Pong" && (
+            <GameUI>
+              <h3>{selectedGame.name}</h3>
+              <p>Score: {(gameState as { score?: number }).score || 0}</p>
+            </GameUI>
+          )}
+          <GameButtonsContainer>
+            {/* Show Try Again button when game is over */}
+            {(gameState as { gameOver?: boolean }).gameOver && (
+              <TryAgainButton onClick={tryAgain}>
+                🔄 Try Again (R)
+              </TryAgainButton>
+            )}
+            <ExitButton onClick={exitGame}>🏠 Exit Game (ESC)</ExitButton>
+          </GameButtonsContainer>
         </GameOverlay>
         <GameComponent
           canvas={canvasRef}
@@ -654,6 +896,50 @@ const AIGameWorkshop: React.FC = () => {
           </GameCard>
         ))}
       </GameGrid>
+
+      {/* Game Over Modal */}
+      {showGameOverModal && gameResult && (
+        <GameOverModal>
+          <ModalContent>
+            <ModalTitle>
+              {gameResult.winner === "player" ? "🎉 Victory!" : "🤖 AI Wins!"}
+            </ModalTitle>
+
+            <ModalStats>
+              <div className="final-score">
+                Final Score: {gameResult.playerScore} - {gameResult.aiScore}
+              </div>
+
+              <div className="stat-row">
+                <span>Your Score:</span>
+                <span>{gameResult.playerScore}</span>
+              </div>
+
+              <div className="stat-row">
+                <span>AI Score:</span>
+                <span>{gameResult.aiScore}</span>
+              </div>
+
+              <div className="stat-row">
+                <span>Best Rally:</span>
+                <span>{gameResult.maxRally} hits</span>
+              </div>
+
+              <div className="stat-row">
+                <span>Game:</span>
+                <span>{selectedGame?.name}</span>
+              </div>
+            </ModalStats>
+
+            <ModalButtons>
+              <ModalButton $primary onClick={playAgain}>
+                🔄 Play Again
+              </ModalButton>
+              <ModalButton onClick={backToDashboard}>🏠 Dashboard</ModalButton>
+            </ModalButtons>
+          </ModalContent>
+        </GameOverModal>
+      )}
     </WorkshopContainer>
   );
 };
