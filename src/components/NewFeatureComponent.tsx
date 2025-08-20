@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import ReservoirDreamscape from "./ReservoirDreamscape";
 import AIAssistant from "./AIAssistant";
+import PoesCorner from "./PoesCorner";
 
 // Types for features
 interface Feature {
@@ -11,7 +12,7 @@ interface Feature {
   branch: string;
   icon: string;
   status: "active" | "development" | "concept" | "implemented";
-  component?: React.FC;
+  component?: React.FC<Record<string, unknown>>; // Components can accept any props including onBack
 }
 
 interface NewFeatureProps {
@@ -47,6 +48,16 @@ const featuresData: Feature[] = [
     icon: "🤖",
     status: "active",
     component: AIAssistant,
+  },
+  {
+    id: "poe-gothic-ravens",
+    title: "Poe's Corner",
+    description:
+      "🐦‍⬛ Obsession-level gothic realm where ravens reign supreme and darkness dwells in every shadow. Nevermore shall beauty be mundane.",
+    branch: "poe-gothic-ravens",
+    icon: "🐦‍⬛",
+    status: "active",
+    component: PoesCorner,
   },
   {
     id: "data-viz",
@@ -262,7 +273,7 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
 
         {/* Render the actual feature component */}
         {FeatureComponent ? (
-          <FeatureComponent />
+          <FeatureComponent onBack={() => setSelectedFeature(null)} />
         ) : (
           <div style={{ padding: "2rem", textAlign: "center", color: "#888" }}>
             <p>Component not yet implemented for this feature.</p>
