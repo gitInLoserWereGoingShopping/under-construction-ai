@@ -1,11 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  Suspense,
-  lazy,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import styled, { keyframes, css } from "styled-components";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 
@@ -1872,10 +1865,8 @@ const Tombstone = styled.div<{
   left: ${(props) => props.$position.left};
   font-size: ${(props) => props.$size};
   transform: rotate(${(props) => props.$tilt}deg);
-  ${css`
-    animation: ${tombstoneWaver} ${(props) => props.$animationDuration}s
-      infinite ease-in-out;
-  `}
+  animation: ${tombstoneWaver} ${(props) => props.$animationDuration}s infinite
+    ease-in-out;
   opacity: 0.7;
   cursor: pointer;
 
@@ -2828,7 +2819,7 @@ const FloatingOrb = styled(motion.div)<{
 
   /* 🌟 MYSTICAL TRAIL WHEN DRAGGING */
   &::before {
-    content: ${(props) => (props.$isDragging ? "'✨'" : "'◐◑'")};
+    content: ${(props) => (props.$isDragging ? '"✨"' : '"◐◑"')};
     position: absolute;
     top: 50%;
     left: 50%;
@@ -3402,27 +3393,20 @@ const PoesCorner: React.FC<PoesCornerProps> = ({ onBack }) => {
   const [currentQuote, setCurrentQuote] = useState(0);
   const [orbStory, setOrbStory] = useState<string | null>(null);
   const [orbClickCount, setOrbClickCount] = useState(0);
-  const [activeBadges, setActiveBadges] = useState<Set<BadgeType>>(new Set());
-  const [badgeTooltip, setBadgeTooltip] = useState<string | null>(null);
   const [currentMood, setCurrentMood] = useState<string>("shadow-effects");
   const [wandPosition, setWandPosition] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,
   });
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
-  const [animationsPaused, setAnimationsPaused] = useState(false);
   const [tilesScattered, setTilesScattered] = useState(false);
   const [showSacredCone, setShowSacredCone] = useState(false);
-  const [tilePositions, setTilePositions] = useState<
-    Map<string, { x: number; y: number }>
-  >(new Map());
   const [orbIsDragging, setOrbIsDragging] = useState(false);
   const [orbPosition, setOrbPosition] = useState({ x: "60%", y: "35%" });
   const [currentTileInteraction, setCurrentTileInteraction] = useState<
     string | null
   >(null);
   const [mysticalRevelations, setMysticalRevelations] = useState<string[]>([]);
-  const controls = useAnimation();
   const [ravens, setRavens] = useState<
     Array<{
       id: number;
@@ -3621,10 +3605,6 @@ const PoesCorner: React.FC<PoesCornerProps> = ({ onBack }) => {
     // Reset hover states
     setHoveredElement(null);
 
-    // Reset badge interactions
-    setActiveBadges(new Set());
-    setBadgeTooltip(null);
-
     // Brief delay for state cleanup, then call the onBack prop
     setTimeout(() => {
       if (onBack) {
@@ -3636,9 +3616,6 @@ const PoesCorner: React.FC<PoesCornerProps> = ({ onBack }) => {
   // � Handle Sacred Cone Crash - Gothic Typography Destruction!
   const handleConeSmash = async () => {
     console.log("� Sacred cone crash incoming! Tiles scattering...");
-
-    // Pause all animations
-    setAnimationsPaused(true);
 
     // Show the sacred cone
     setShowSacredCone(true);
@@ -3670,7 +3647,6 @@ const PoesCorner: React.FC<PoesCornerProps> = ({ onBack }) => {
     // Reassemble everything after the effect
     setTimeout(() => {
       setTilesScattered(false);
-      setAnimationsPaused(false);
       console.log("🌟 Gothic tiles reassembled to original positions");
     }, 3500);
   }; // 🎯 Handle Tile Click with Gothic Typography Special Effect
@@ -3787,65 +3763,68 @@ const PoesCorner: React.FC<PoesCornerProps> = ({ onBack }) => {
     }, 3000);
   }, []);
 
-  const handleOrbDrag = useCallback((event: any, info: any) => {
-    // Update orb position for story positioning - simplified calculation
-    const container = document.querySelector(".gothic-realm");
-    if (container && info.point) {
-      const containerRect = container.getBoundingClientRect();
-      const relativeX =
-        ((info.point.x - containerRect.left) / containerRect.width) * 100;
-      const relativeY =
-        ((info.point.y - containerRect.top) / containerRect.height) * 100;
-      setOrbPosition({
-        x: `${Math.max(15, Math.min(85, relativeX))}%`,
-        y: `${Math.max(10, Math.min(75, relativeY))}%`,
-      });
-    }
+  const handleOrbDrag = useCallback(
+    (event: MouseEvent, info: { point: { x: number; y: number } }) => {
+      // Throttle ALL drag operations to prevent jittering
+      if (dragThrottleRef.current) return;
 
-    // Throttle the drag collision detection to prevent excessive re-renders
-    if (dragThrottleRef.current) return;
+      dragThrottleRef.current = setTimeout(() => {
+        dragThrottleRef.current = null;
 
-    dragThrottleRef.current = setTimeout(() => {
-      dragThrottleRef.current = null;
-
-      // Optimized collision detection with reduced DOM queries
-      const { x, y } = info.point;
-      const elements = document.elementsFromPoint(x, y);
-      const tileElement = elements.find((el) =>
-        el.getAttribute("data-tile-id")
-      );
-
-      if (tileElement) {
-        const tileId = tileElement.getAttribute("data-tile-id");
-        const feature = GOTHIC_FEATURES.find((f) => f.id === tileId);
-
-        // Only update if tile interaction actually changed
-        if (feature && lastTileInteractionRef.current !== feature.theme) {
-          lastTileInteractionRef.current = feature.theme;
-          setCurrentTileInteraction(feature.theme);
-
-          // Batch revelation updates to reduce re-renders
-          const revelation =
-            feature.theme === "mystical"
-              ? "🌙 The orb resonates with mystical energies... ancient secrets whisper..."
-              : feature.theme === "blood"
-              ? "🩸 Crimson visions flow through the orb... shadows of the past emerge..."
-              : feature.theme === "gold"
-              ? "✨ Golden light emanates... the orb channels divine inspiration..."
-              : feature.theme === "raven"
-              ? "🐦‍⬛ The raven's wisdom flows... dark knowledge unfolds..."
-              : feature.theme === "moon"
-              ? "🌕 Lunar energies pulse... night's mysteries reveal themselves..."
-              : "🔮 The orb tingles with unknown power...";
-
-          setMysticalRevelations((prev) => [...prev.slice(-2), revelation]);
+        // Update orb position for story positioning - simplified calculation
+        const container = document.querySelector(".gothic-realm");
+        if (container && info.point) {
+          const containerRect = container.getBoundingClientRect();
+          const relativeX =
+            ((info.point.x - containerRect.left) / containerRect.width) * 100;
+          const relativeY =
+            ((info.point.y - containerRect.top) / containerRect.height) * 100;
+          setOrbPosition({
+            x: `${Math.max(15, Math.min(85, relativeX))}%`,
+            y: `${Math.max(10, Math.min(75, relativeY))}%`,
+          });
         }
-      } else if (lastTileInteractionRef.current) {
-        lastTileInteractionRef.current = null;
-        setCurrentTileInteraction(null);
-      }
-    }, 100); // Throttle to 10fps for drag detection
-  }, []);
+
+        // Optimized collision detection with reduced DOM queries
+        const { x, y } = info.point;
+        const elements = document.elementsFromPoint(x, y);
+        const tileElement = elements.find((el) =>
+          el.getAttribute("data-tile-id")
+        );
+
+        if (tileElement) {
+          const tileId = tileElement.getAttribute("data-tile-id");
+          const feature = GOTHIC_FEATURES.find((f) => f.id === tileId);
+
+          // Only update if tile interaction actually changed
+          if (feature && lastTileInteractionRef.current !== feature.theme) {
+            lastTileInteractionRef.current = feature.theme;
+            setCurrentTileInteraction(feature.theme);
+
+            // Batch revelation updates to reduce re-renders
+            const revelation =
+              feature.theme === "mystical"
+                ? "🌙 The orb resonates with mystical energies... ancient secrets whisper..."
+                : feature.theme === "blood"
+                ? "🩸 Crimson visions flow through the orb... shadows of the past emerge..."
+                : feature.theme === "gold"
+                ? "✨ Golden light emanates... the orb channels divine inspiration..."
+                : feature.theme === "raven"
+                ? "🐦‍⬛ The raven's wisdom flows... dark knowledge unfolds..."
+                : feature.theme === "moon"
+                ? "🌕 Lunar energies pulse... night's mysteries reveal themselves..."
+                : "🔮 The orb tingles with unknown power...";
+
+            setMysticalRevelations((prev) => [...prev.slice(-2), revelation]);
+          }
+        } else if (lastTileInteractionRef.current) {
+          lastTileInteractionRef.current = null;
+          setCurrentTileInteraction(null);
+        }
+      }, 100); // Throttle to 10fps for drag detection
+    },
+    []
+  );
 
   // 🪄 WAND POSITION TRACKING - Optimized with throttling to prevent excessive re-renders
   useEffect(() => {
@@ -4092,7 +4071,7 @@ const PoesCorner: React.FC<PoesCornerProps> = ({ onBack }) => {
         ))}
       </BatSwarm>
 
-      <GothicTitle>Poe's Corner</GothicTitle>
+      <GothicTitle>Poe&apos;s Corner</GothicTitle>
 
       <PoeQuote>{POE_QUOTES[currentQuote]}</PoeQuote>
 

@@ -12,7 +12,7 @@ interface Feature {
   branch: string;
   icon: string;
   status: "active" | "development" | "concept" | "implemented";
-  component?: React.FC<any>; // Allow any props - components can accept onBack if they support it
+  component?: React.FC<Record<string, unknown>>; // Components can accept any props including onBack
 }
 
 interface NewFeatureProps {
