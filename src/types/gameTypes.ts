@@ -25,7 +25,14 @@ export interface GamepadState {
 }
 
 export interface GameEvent {
-  type: 'start' | 'pause' | 'resume' | 'end' | 'score' | 'achievement';
+  type:
+    | "start"
+    | "pause"
+    | "resume"
+    | "end"
+    | "score"
+    | "achievement"
+    | "LASER_SHOOT";
   data?: Record<string, unknown>;
 }
 
@@ -43,7 +50,7 @@ export interface GameConfig {
   description: string;
   icon: string;
   difficulty: number; // 1-10
-  controls: ('keyboard' | 'mouse' | 'touch' | 'gamepad')[];
-  category: 'arcade' | 'puzzle' | 'action' | 'strategy' | 'experimental';
+  controls: ("keyboard" | "mouse" | "touch" | "gamepad")[];
+  category: "arcade" | "puzzle" | "action" | "strategy" | "experimental";
   component: React.FC<GameEngineProps>;
 }
