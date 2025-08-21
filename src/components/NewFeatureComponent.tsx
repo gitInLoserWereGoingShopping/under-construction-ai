@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { motion, AnimatePresence } from "framer-motion";
 import ReservoirDreamscape from "./ReservoirDreamscape";
 import AIAssistant from "./AIAssistant";
 import PoesCorner from "./PoesCorner";
+import AnimationPlayground from "./AnimationPlayground";
 
 // Types for features
 interface Feature {
@@ -21,6 +23,16 @@ interface NewFeatureProps {
 
 // Sample features data (this could eventually come from a config or API)
 const featuresData: Feature[] = [
+  {
+    id: "animation-playground",
+    title: "Animation Playground",
+    description:
+      "🎨 Interactive visual effects laboratory with draggable orb and shader-like filters! Drag to discover fire, ice, liquid, electric, and cosmic effects.",
+    branch: "animation-playground",
+    icon: "🎮",
+    status: "active",
+    component: AnimationPlayground,
+  },
   {
     id: "reservoir-dreamscape",
     title: "Reservoir Dreamscape",
@@ -46,7 +58,7 @@ const featuresData: Feature[] = [
       "🧪 Mad Science Lab for weird AI experiments and creative chaos!",
     branch: "ai-assistant",
     icon: "🤖",
-    status: "active",
+    status: "development",
     component: AIAssistant,
   },
   {
@@ -56,7 +68,7 @@ const featuresData: Feature[] = [
       "🐦‍⬛ Obsession-level gothic realm where ravens reign supreme and darkness dwells in every shadow. Nevermore shall beauty be mundane.",
     branch: "poe-gothic-ravens",
     icon: "🐦‍⬛",
-    status: "active",
+    status: "implemented",
     component: PoesCorner,
   },
   {
@@ -243,9 +255,11 @@ const ActionButton = styled.button<{ $variant?: "primary" | "secondary" }>`
 // Main Component
 export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
   const handleFeatureClick = (feature: Feature) => {
     setSelectedFeature(feature);
+    setIsHeaderCollapsed(false); // Reset header state when selecting a feature
     // Here you could navigate to the specific feature or load its component
     console.log(`Navigating to feature: ${feature.title} (${feature.branch})`);
   };
@@ -255,25 +269,43 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
     console.log("Creating new feature...");
   };
 
+  const handleHeaderCollapseRequest = (shouldCollapse: boolean) => {
+    setIsHeaderCollapsed(shouldCollapse);
+  };
+
   if (selectedFeature) {
     // If a feature is selected, render its component
     const FeatureComponent = selectedFeature.component;
 
     return (
       <DashboardWrapper>
-        <DashboardHeader>
-          <DashboardTitle>
-            {selectedFeature.icon} {selectedFeature.title}
-          </DashboardTitle>
-          <DashboardSubtitle>
-            Branch: <code>{selectedFeature.branch}</code> • Status:{" "}
-            {selectedFeature.status}
-          </DashboardSubtitle>
-        </DashboardHeader>
+        <AnimatePresence>
+          {!isHeaderCollapsed && (
+            <motion.div
+              initial={{ opacity: 1, height: "auto" }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+            >
+              <DashboardHeader>
+                <DashboardTitle>
+                  {selectedFeature.icon} {selectedFeature.title}
+                </DashboardTitle>
+                <DashboardSubtitle>
+                  Branch: <code>{selectedFeature.branch}</code> • Status:{" "}
+                  {selectedFeature.status}
+                </DashboardSubtitle>
+              </DashboardHeader>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Render the actual feature component */}
         {FeatureComponent ? (
-          <FeatureComponent onBack={() => setSelectedFeature(null)} />
+          <FeatureComponent
+            onBack={() => setSelectedFeature(null)}
+            onHeaderCollapseRequest={handleHeaderCollapseRequest}
+          />
         ) : (
           <div style={{ padding: "2rem", textAlign: "center", color: "#888" }}>
             <p>Component not yet implemented for this feature.</p>
@@ -281,16 +313,18 @@ export const NewFeatureComponent: React.FC<NewFeatureProps> = ({ onBack }) => {
           </div>
         )}
 
-        <ActionsSection>
-          <ActionButton onClick={() => setSelectedFeature(null)}>
-            ← Back to Dashboard
-          </ActionButton>
-          {onBack && (
-            <ActionButton $variant="secondary" onClick={onBack}>
-              ← Back to Construction
+        {!isHeaderCollapsed && (
+          <ActionsSection>
+            <ActionButton onClick={() => setSelectedFeature(null)}>
+              ← Back to Dashboard
             </ActionButton>
-          )}
-        </ActionsSection>
+            {onBack && (
+              <ActionButton $variant="secondary" onClick={onBack}>
+                ← Back to Construction
+              </ActionButton>
+            )}
+          </ActionsSection>
+        )}
       </DashboardWrapper>
     );
   }
