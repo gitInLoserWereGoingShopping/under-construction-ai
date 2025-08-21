@@ -9,6 +9,22 @@ interface AnimationPlaygroundProps {
   onHeaderCollapseRequest?: (shouldCollapse: boolean) => void; // New prop for header control
 }
 
+// 🎨 Playground Types
+type PlaygroundType =
+  | "shader-effects"
+  | "particle-physics"
+  | "color-morphing"
+  | "geometric-patterns"
+  | "fluid-dynamics";
+
+interface PlaygroundConfig {
+  id: PlaygroundType;
+  title: string;
+  icon: string;
+  description: string;
+  zones: AnimationZone[];
+}
+
 // 🎨 Shader-Inspired Filter Types
 type FilterType =
   | "none"
@@ -17,7 +33,14 @@ type FilterType =
   | "liquid"
   | "electric"
   | "cosmic"
-  | "glitch";
+  | "glitch"
+  | "particle-burst"
+  | "gravity-well"
+  | "color-shift"
+  | "prism-split"
+  | "kaleidoscope"
+  | "fluid-ripple"
+  | "vortex-spin";
 
 // 🎯 Animation Zone Configuration
 interface AnimationZone {
@@ -75,6 +98,148 @@ const ANIMATION_ZONES: AnimationZone[] = [
     position: { x: "50%", y: "45%" },
     color: "#4b0082",
     description: "Starfield overlays and gravitational lensing",
+  },
+];
+
+// 🎯 Playground Configurations
+const PLAYGROUND_CONFIGS: PlaygroundConfig[] = [
+  {
+    id: "shader-effects",
+    title: "Shader Effects",
+    icon: "🎨",
+    description: "Visual filters and shader-like effects",
+    zones: ANIMATION_ZONES,
+  },
+  {
+    id: "particle-physics",
+    title: "Particle Physics",
+    icon: "⚛️",
+    description: "Dynamic particle systems and physics",
+    zones: [
+      {
+        id: "gravity-well",
+        title: "Gravity Well",
+        icon: "🌀",
+        filter: "gravity-well",
+        position: { x: "20%", y: "30%" },
+        color: "#663399",
+        description: "Particles spiral into gravitational center",
+      },
+      {
+        id: "particle-burst",
+        title: "Particle Burst",
+        icon: "💥",
+        filter: "particle-burst",
+        position: { x: "70%", y: "25%" },
+        color: "#ff6b35",
+        description: "Explosive particle emission effects",
+      },
+      {
+        id: "magnetic-field",
+        title: "Magnetic Field",
+        icon: "🧲",
+        filter: "electric",
+        position: { x: "30%", y: "65%" },
+        color: "#00d4aa",
+        description: "Particles follow magnetic field lines",
+      },
+      {
+        id: "quantum-foam",
+        title: "Quantum Foam",
+        icon: "🌌",
+        filter: "cosmic",
+        position: { x: "65%", y: "60%" },
+        color: "#8a2be2",
+        description: "Probabilistic particle fluctuations",
+      },
+    ],
+  },
+  {
+    id: "color-morphing",
+    title: "Color Morphing",
+    icon: "🌈",
+    description: "Dynamic color transformations and gradients",
+    zones: [
+      {
+        id: "prism-split",
+        title: "Prism Split",
+        icon: "🔺",
+        filter: "prism-split",
+        position: { x: "25%", y: "25%" },
+        color: "#ff1493",
+        description: "Light spectrum separation effects",
+      },
+      {
+        id: "color-shift",
+        title: "Color Shift",
+        icon: "🎭",
+        filter: "color-shift",
+        position: { x: "60%", y: "35%" },
+        color: "#32cd32",
+        description: "Hue rotation and saturation morphing",
+      },
+      {
+        id: "kaleidoscope",
+        title: "Kaleidoscope",
+        icon: "🔮",
+        filter: "kaleidoscope",
+        position: { x: "45%", y: "65%" },
+        color: "#ffd700",
+        description: "Symmetrical color pattern mirroring",
+      },
+    ],
+  },
+  {
+    id: "geometric-patterns",
+    title: "Geometric Patterns",
+    icon: "📐",
+    description: "Mathematical and geometric visualizations",
+    zones: [
+      {
+        id: "fractal-zone",
+        title: "Fractal Zoom",
+        icon: "🌀",
+        filter: "cosmic",
+        position: { x: "30%", y: "30%" },
+        color: "#ff69b4",
+        description: "Self-similar pattern generation",
+      },
+      {
+        id: "tessellation",
+        title: "Tessellation",
+        icon: "🔷",
+        filter: "ice",
+        position: { x: "65%", y: "45%" },
+        color: "#4169e1",
+        description: "Interlocking geometric shapes",
+      },
+    ],
+  },
+  {
+    id: "fluid-dynamics",
+    title: "Fluid Dynamics",
+    icon: "💧",
+    description: "Liquid simulation and flow effects",
+    zones: [
+      {
+        id: "fluid-ripple",
+        title: "Fluid Ripple",
+        icon: "🌊",
+        filter: "fluid-ripple",
+        position: { x: "40%", y: "30%" },
+        color: "#1e90ff",
+        description: "Surface tension and wave propagation",
+      },
+      {
+        id: "vortex-spin",
+        title: "Vortex Spin",
+        icon: "🌪️",
+        filter: "vortex-spin",
+        position: { x: "55%", y: "55%" },
+        color: "#20b2aa",
+        description: "Rotational fluid motion effects",
+      },
+    ],
   },
 ];
 
@@ -169,6 +334,49 @@ const FilterOverlay = styled.div<{ $activeFilter: FilterType }>`
           filter: saturate(1.4) contrast(1.2);
           animation: cosmic-drift 4s infinite ease-in-out;
         `;
+      // 🆕 New filter effects for additional playgrounds
+      case "gravity-well":
+        return `
+          background: radial-gradient(circle, rgba(102,51,153,0.15) 0%, transparent 70%);
+          filter: contrast(1.3) hue-rotate(45deg);
+          animation: gravity-pull 2.5s infinite ease-in-out;
+        `;
+      case "particle-burst":
+        return `
+          background: radial-gradient(circle, rgba(255,107,53,0.2) 0%, transparent 60%);
+          filter: saturate(2) brightness(1.2) contrast(1.4);
+          animation: burst-flicker 0.8s infinite ease-in-out;
+        `;
+      case "prism-split":
+        return `
+          background: linear-gradient(90deg, rgba(255,20,147,0.1) 0%, rgba(0,255,255,0.1) 50%, rgba(255,255,0,0.1) 100%);
+          filter: saturate(2) contrast(1.3);
+          animation: prism-rainbow 3s infinite ease-in-out;
+        `;
+      case "color-shift":
+        return `
+          background: radial-gradient(circle, rgba(50,205,50,0.15) 0%, transparent 70%);
+          filter: hue-rotate(0deg) saturate(1.5);
+          animation: color-morph 2s infinite ease-in-out;
+        `;
+      case "kaleidoscope":
+        return `
+          background: conic-gradient(from 0deg, rgba(255,215,0,0.1) 0%, rgba(255,20,147,0.1) 120deg, rgba(0,191,255,0.1) 240deg, rgba(255,215,0,0.1) 360deg);
+          filter: saturate(1.8) contrast(1.2);
+          animation: kaleidoscope-spin 4s infinite linear;
+        `;
+      case "fluid-ripple":
+        return `
+          background: radial-gradient(ellipse, rgba(30,144,255,0.12) 0%, transparent 70%);
+          filter: blur(0.8px) saturate(1.4);
+          animation: fluid-wave 2.8s infinite ease-in-out;
+        `;
+      case "vortex-spin":
+        return `
+          background: conic-gradient(from 45deg, rgba(32,178,170,0.15) 0%, transparent 50%, rgba(32,178,170,0.15) 100%);
+          filter: contrast(1.3) saturate(1.6);
+          animation: vortex-rotation 1.5s infinite ease-in-out;
+        `;
       default:
         return `filter: none;`;
     }
@@ -211,6 +419,91 @@ const FilterOverlay = styled.div<{ $activeFilter: FilterType }>`
     }
     50% {
       filter: saturate(1.6) hue-rotate(10deg);
+    }
+  }
+
+  // 🆕 New keyframe animations
+  @keyframes gravity-pull {
+    0%,
+    100% {
+      filter: contrast(1.2) hue-rotate(40deg);
+      transform: scale(1);
+    }
+    50% {
+      filter: contrast(1.5) hue-rotate(50deg);
+      transform: scale(1.02);
+    }
+  }
+
+  @keyframes burst-flicker {
+    0%,
+    100% {
+      filter: saturate(1.8) brightness(1.1);
+    }
+    25% {
+      filter: saturate(2.2) brightness(1.3);
+    }
+    50% {
+      filter: saturate(2) brightness(1.2);
+    }
+    75% {
+      filter: saturate(2.4) brightness(1.4);
+    }
+  }
+
+  @keyframes prism-rainbow {
+    0% {
+      filter: hue-rotate(0deg) saturate(2);
+    }
+    33% {
+      filter: hue-rotate(120deg) saturate(2.2);
+    }
+    66% {
+      filter: hue-rotate(240deg) saturate(2);
+    }
+    100% {
+      filter: hue-rotate(360deg) saturate(2);
+    }
+  }
+
+  @keyframes color-morph {
+    0% {
+      filter: hue-rotate(0deg) saturate(1.5);
+    }
+    50% {
+      filter: hue-rotate(180deg) saturate(1.8);
+    }
+    100% {
+      filter: hue-rotate(360deg) saturate(1.5);
+    }
+  }
+
+  @keyframes kaleidoscope-spin {
+    0% {
+      filter: saturate(1.8) contrast(1.2) hue-rotate(0deg);
+    }
+    100% {
+      filter: saturate(1.8) contrast(1.2) hue-rotate(360deg);
+    }
+  }
+
+  @keyframes fluid-wave {
+    0%,
+    100% {
+      filter: blur(0.6px) saturate(1.3);
+    }
+    50% {
+      filter: blur(1.2px) saturate(1.6);
+    }
+  }
+
+  @keyframes vortex-rotation {
+    0%,
+    100% {
+      filter: contrast(1.3) saturate(1.6) hue-rotate(0deg);
+    }
+    50% {
+      filter: contrast(1.5) saturate(1.8) hue-rotate(30deg);
     }
   }
 `;
@@ -541,6 +834,61 @@ const CollapseHeaderIcon = styled(motion.span)<{ $isCollapsed: boolean }>`
   transform-origin: center;
 `;
 
+// 🔄 Playground Rotation Components
+const PlaygroundRotationButton = styled.button`
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 122, 24, 0.15);
+  border: 2px solid rgba(255, 122, 24, 0.3);
+  border-radius: 12px;
+  padding: 8px 16px;
+  color: #ff7a18;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  justify-content: center;
+
+  &:hover {
+    background: rgba(255, 122, 24, 0.25);
+    border-color: rgba(255, 122, 24, 0.5);
+    transform: translate(-50%, -50%) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 122, 24, 0.2);
+  }
+
+  @media (max-width: 768px) {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    min-width: 120px;
+  }
+`;
+
+const PlaygroundRotationIcon = styled(motion.div)`
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const PlaygroundRotationTitle = styled.div`
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    max-width: 80px;
+  }
+`;
+
 const AnimationPlayground: React.FC<AnimationPlaygroundProps> = ({
   onBack,
   onHeaderCollapseRequest,
@@ -552,7 +900,19 @@ const AnimationPlayground: React.FC<AnimationPlaygroundProps> = ({
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false); // Header collapse state
   const [isParentHeaderCollapsed, setIsParentHeaderCollapsed] = useState(false); // Parent header collapse state
   const [shouldPulseButton, setShouldPulseButton] = useState(false); // Guide pulse state
+  const [currentPlaygroundIndex, setCurrentPlaygroundIndex] = useState(0); // Playground rotation state
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Get current playground configuration
+  const currentPlayground = PLAYGROUND_CONFIGS[currentPlaygroundIndex];
+
+  // Rotate to next playground
+  const rotatePlayground = () => {
+    setCurrentPlaygroundIndex((prev) => (prev + 1) % PLAYGROUND_CONFIGS.length);
+    // Reset zone states when switching playgrounds
+    setActiveZone(null);
+    setCurrentFilter("none");
+  };
 
   // 🖱️ Mouse/Touch position tracking
   const { mousePosition, isTracking, startTracking, stopTracking } =
@@ -633,7 +993,7 @@ const AnimationPlayground: React.FC<AnimationPlaygroundProps> = ({
 
       if (zoneElement) {
         const zoneId = zoneElement.getAttribute("data-zone-id");
-        const zone = ANIMATION_ZONES.find((z) => z.id === zoneId);
+        const zone = currentPlayground.zones.find((z) => z.id === zoneId);
         if (zone && activeZone !== zone.id) {
           setActiveZone(zone.id);
           setCurrentFilter(zone.filter);
@@ -679,7 +1039,7 @@ const AnimationPlayground: React.FC<AnimationPlaygroundProps> = ({
     }
   }, [onHeaderCollapseRequest, isParentHeaderCollapsed]);
 
-  const currentZone = ANIMATION_ZONES.find((z) => z.id === activeZone);
+  const currentZone = currentPlayground.zones.find((z) => z.id === activeZone);
 
   return (
     <AnimatePresence>
@@ -693,15 +1053,35 @@ const AnimationPlayground: React.FC<AnimationPlaygroundProps> = ({
           {/* 🎯 Playground Header Bar - Fixed positioning */}
           <PlaygroundHeaderBar>
             <PlaygroundHeaderButton onClick={onBack}>
-              ← Back to Dashboard
+              ← Back
             </PlaygroundHeaderButton>
+
+            {/* 🔄 Playground Rotation Button */}
+            <PlaygroundRotationButton
+              onClick={rotatePlayground}
+              title={`Switch to ${
+                PLAYGROUND_CONFIGS[
+                  (currentPlaygroundIndex + 1) % PLAYGROUND_CONFIGS.length
+                ].title
+              }`}
+            >
+              <PlaygroundRotationIcon
+                animate={{ rotate: currentPlaygroundIndex * 72 }} // 360/5 playgrounds = 72 degrees per rotation
+                transition={{ duration: 0.6, ease: "easeOut" }}
+              >
+                {currentPlayground.icon}
+              </PlaygroundRotationIcon>
+              <PlaygroundRotationTitle>
+                {currentPlayground.title}
+              </PlaygroundRotationTitle>
+            </PlaygroundRotationButton>
 
             <PlaygroundHeaderButton
               $variant="secondary"
               $shouldPulse={shouldPulseButton && !isParentHeaderCollapsed}
               onClick={toggleParentHeader}
             >
-              {isParentHeaderCollapsed ? "Show" : "Hide"} Header
+              {isParentHeaderCollapsed ? "Show" : "Hide"} Info
               <CollapseHeaderIcon
                 $isCollapsed={isParentHeaderCollapsed}
                 animate={{ rotate: isParentHeaderCollapsed ? 180 : 0 }}
@@ -800,7 +1180,7 @@ const AnimationPlayground: React.FC<AnimationPlaygroundProps> = ({
             </PlaygroundUI>
 
             {/* 🎯 Animation Zones */}
-            {ANIMATION_ZONES.map((zone) => (
+            {currentPlayground.zones.map((zone) => (
               <AnimationZoneElement
                 key={zone.id}
                 data-zone-id={zone.id}
