@@ -5,6 +5,7 @@ import ReservoirDreamscape from "./ReservoirDreamscape";
 import AIAssistant from "./AIAssistant";
 import PoesCorner from "./PoesCorner";
 import AnimationPlayground from "./AnimationPlayground";
+import CodingCommandCenter from "./CodingCommandCenter";
 
 // Types for features
 interface Feature {
@@ -23,6 +24,16 @@ interface NewFeatureProps {
 
 // Sample features data (this could eventually come from a config or API)
 const featuresData: Feature[] = [
+  {
+    id: "coding-command-center",
+    title: "Coding Command Center",
+    description:
+      "💻 Virtual Linux terminal and code editor in your browser! Access a full command-line environment anywhere you go with file system, editor, and Linux-like commands.",
+    branch: "coding-command-center",
+    icon: "💻",
+    status: "active",
+    component: CodingCommandCenter,
+  },
   {
     id: "animation-playground",
     title: "Animation Playground",
