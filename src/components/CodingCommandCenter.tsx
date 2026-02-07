@@ -13,6 +13,13 @@ interface CommandCenterProps {
   onHeaderCollapseRequest?: (collapse: boolean) => void;
 }
 
+// Deep clone utility for file system
+const deepCloneFileSystem = (
+  obj: { [key: string]: FileSystemNode }
+): { [key: string]: FileSystemNode } => {
+  return JSON.parse(JSON.stringify(obj));
+};
+
 // Virtual file system
 const initialFileSystem: { [key: string]: FileSystemNode } = {
   home: {
@@ -380,8 +387,8 @@ const CodingCommandCenter: React.FC<CommandCenterProps> = ({
 
     const items = Object.keys(node.children)
       .map((name) => {
-        const item = node.children![name];
-        return item.type === "directory" ? `${name}/` : name;
+        const item = node.children?.[name];
+        return item && item.type === "directory" ? `${name}/` : name;
       })
       .join("  ");
 
@@ -509,13 +516,20 @@ const CodingCommandCenter: React.FC<CommandCenterProps> = ({
         } else {
           const mkdirPath = `${currentPath}/${args[0]}`.replace("//", "/");
           const parts = mkdirPath.split("/").filter(Boolean);
+          if (parts.length === 0) {
+            setOutput((prev) => [
+              ...prev,
+              { type: "error", content: "mkdir: invalid path" },
+            ]);
+            break;
+          }
           const dirName = parts.pop()!;
           const parentPath = "/" + parts.join("/");
 
           const { node: parentNode } = getNodeAtPath(parentPath);
           if (parentNode && parentNode.type === "directory") {
             if (parentNode.children && !parentNode.children[dirName]) {
-              const newFS = { ...fileSystem };
+              const newFS = deepCloneFileSystem(fileSystem);
               const { node: updatedParent } = getNodeAtPath(parentPath);
               if (updatedParent && updatedParent.children) {
                 updatedParent.children[dirName] = {
@@ -548,13 +562,20 @@ const CodingCommandCenter: React.FC<CommandCenterProps> = ({
         } else {
           const touchPath = `${currentPath}/${args[0]}`.replace("//", "/");
           const parts = touchPath.split("/").filter(Boolean);
+          if (parts.length === 0) {
+            setOutput((prev) => [
+              ...prev,
+              { type: "error", content: "touch: invalid path" },
+            ]);
+            break;
+          }
           const fileName = parts.pop()!;
           const parentPath = "/" + parts.join("/");
 
           const { node: parentNode } = getNodeAtPath(parentPath);
           if (parentNode && parentNode.type === "directory") {
             if (parentNode.children && !parentNode.children[fileName]) {
-              const newFS = { ...fileSystem };
+              const newFS = deepCloneFileSystem(fileSystem);
               const { node: updatedParent } = getNodeAtPath(parentPath);
               if (updatedParent && updatedParent.children) {
                 updatedParent.children[fileName] = {
@@ -585,12 +606,19 @@ const CodingCommandCenter: React.FC<CommandCenterProps> = ({
           const fileName = trimmed.substring(echoIndex + 1).trim();
           const filePath = `${currentPath}/${fileName}`.replace("//", "/");
           const parts = filePath.split("/").filter(Boolean);
+          if (parts.length === 0) {
+            setOutput((prev) => [
+              ...prev,
+              { type: "error", content: "echo: invalid path" },
+            ]);
+            break;
+          }
           const name = parts.pop()!;
           const parentPath = "/" + parts.join("/");
 
           const { node: parentNode } = getNodeAtPath(parentPath);
           if (parentNode && parentNode.type === "directory") {
-            const newFS = { ...fileSystem };
+            const newFS = deepCloneFileSystem(fileSystem);
             const { node: updatedParent } = getNodeAtPath(parentPath);
             if (updatedParent && updatedParent.children) {
               updatedParent.children[name] = {
@@ -694,10 +722,17 @@ const CodingCommandCenter: React.FC<CommandCenterProps> = ({
   const handleSaveFile = () => {
     if (currentFile) {
       const parts = currentFile.split("/").filter(Boolean);
+      if (parts.length === 0) {
+        setOutput((prev) => [
+          ...prev,
+          { type: "error", content: "Cannot save: invalid file path" },
+        ]);
+        return;
+      }
       const fileName = parts.pop()!;
       const parentPath = "/" + parts.join("/");
 
-      const newFS = { ...fileSystem };
+      const newFS = deepCloneFileSystem(fileSystem);
       const { node: parentNode } = getNodeAtPath(parentPath);
       if (parentNode && parentNode.type === "directory" && parentNode.children) {
         parentNode.children[fileName] = {
